@@ -45,3 +45,4 @@ next-env.d.ts
 evals/live/results/
 evals/live/results/
 evals/results/
+!.env.example
