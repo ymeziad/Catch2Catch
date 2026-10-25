@@ -5,7 +5,8 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { normalizePhone, samePhone } from "./lib/phone";
 import { messageChannelFromEnv, twilioCredsFromEnv, twilioSendSms } from "./lib/twilio";
 
-export const MAX_SMS_CHARS = 600;
+// Twilio accepts up to 1600 characters per SMS or WhatsApp message; keep a margin. A summary is never cut short below this.
+export const MAX_SMS_CHARS = 1500;
 
 /**
  * Which messages actually go to people's phones. By default only the post-call order summary
@@ -14,7 +15,7 @@ export const MAX_SMS_CHARS = 600;
  */
 function goesToPhone(relatedType: string | undefined): boolean {
   if ((process.env.PHONE_MESSAGES ?? "summaries").toLowerCase() === "all") return true;
-  return relatedType === "order" || relatedType === "test";
+  return relatedType === "order" || relatedType === "summary" || relatedType === "test";
 }
 const UNKNOWN_SENDER_REPLY = "We couldn't find an order for this number.";
 const NO_PENDING_REPLY = "Thanks — there is no order waiting for your confirmation right now.";
@@ -84,6 +85,22 @@ export const sendSms = internalAction({
       evidenceRefs: [{ type: "message", id: messageId, detail: body.slice(0, 120) }],
     });
     return { messageId, status, twilioSid };
+  },
+});
+
+/**
+ * Send the same message to both people on a call. Used when the normal order summary can't be made
+ * (recording, transcription or analysis failed after retries), so nobody is left without a message.
+ */
+export const sendCallNotice = internalAction({
+  args: { callId: v.id("calls"), body: v.string() },
+  handler: async (ctx, { callId, body }) => {
+    const call = await ctx.runQuery(internal.calls.get, { callId });
+    if (!call) return;
+    const to = [...new Set([normalizePhone(call.buyerPhone), normalizePhone(call.sellerPhone)].filter(Boolean))];
+    for (const phone of to) {
+      await ctx.runAction(internal.messaging.sendSms, { to: phone, body, relatedType: "summary", relatedId: callId });
+    }
   },
 });
 

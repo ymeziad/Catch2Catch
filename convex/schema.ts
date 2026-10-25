@@ -49,6 +49,8 @@ export default defineSchema({
     endMs: v.number(),
     text: v.string(),
     confidence: v.optional(v.number()),
+    // Much quieter than the speaker's normal voice (echo of the other caller or background talk). Kept, labeled.
+    faint: v.optional(v.boolean()),
   }).index("by_callId", ["callId", "startMs"]),
 
   catalogProducts: defineTable({

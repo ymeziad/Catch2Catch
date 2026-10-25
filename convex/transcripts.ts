@@ -7,6 +7,7 @@ const segment = v.object({
   endMs: v.number(),
   text: v.string(),
   confidence: v.optional(v.number()),
+  faint: v.optional(v.boolean()),
 });
 
 /** Replace all segments for a call (idempotent so a re-run of the pipeline doesn't duplicate). */

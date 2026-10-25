@@ -155,7 +155,8 @@ function OrderRow({ row, shops, market, onError }: { row: Row; shops: ShopOption
         <ul className="text-lg text-ink/80">
           {order.lines.map((l, i) => (
             <li key={i}>
-              {l.qty} {l.unit === "case" ? (l.qty === 1 ? "case" : "cases") : l.unit} {l.description}
+              {l.qty > 0 ? `${l.qty} ${l.unit === "case" ? (l.qty === 1 ? "case" : "cases") : l.unit} ` : ""}{l.description}
+              {l.qty === 0 && <span className="text-wait"> (quantity not stated)</span>}
               {l.unitPriceCents !== undefined && <span className="text-ink/60"> at {usd(l.unitPriceCents)}</span>}
               {l.unit === "case" && market.get(l.sku)?.priceRetailRefCents !== undefined && (
                 <span className="text-base text-ink/45"> · store price {usd(market.get(l.sku)!.priceRetailRefCents)}/case</span>

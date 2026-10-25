@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import { splitWavChannels } from "./lib/wav";
 import { transcribe, transcribeChannel, type Segment } from "./lib/stt";
 
-type RoleSegment = { role: "buyer" | "seller"; startMs: number; endMs: number; text: string; confidence?: number };
+type RoleSegment = { role: "buyer" | "seller"; startMs: number; endMs: number; text: string; confidence?: number; faint?: boolean };
 
 /**
  * Step 4 — transcription. Loads the stored WAV, separates channels
@@ -12,9 +12,11 @@ type RoleSegment = { role: "buyer" | "seller"; startMs: number; endMs: number; t
  * transcribes each channel with Grok, saves transcriptSegments with the right role,
  * sets status "analyzing" and triggers internal.orders.analyzeCall.
  */
+const RETRY_DELAYS_MS = [20_000, 60_000, 180_000];
+
 export const transcribeCall = internalAction({
-  args: { callId: v.id("calls") },
-  handler: async (ctx, { callId }): Promise<{ count: number }> => {
+  args: { callId: v.id("calls"), attempt: v.optional(v.number()) },
+  handler: async (ctx, { callId, attempt }): Promise<{ count: number }> => {
     const call = await ctx.runQuery(internal.calls.get, { callId });
     if (!call) throw new Error(`call ${callId} not found`);
     if (!call.recordingFileId) throw new Error(`call ${callId} has no recording`);
@@ -56,18 +58,31 @@ export const transcribeCall = internalAction({
       return { count };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.error(`[transcription] ${msg}`);
+      const n = attempt ?? 1;
+      console.error(`[transcription] attempt ${n}: ${msg}`);
+      if (n < RETRY_DELAYS_MS.length + 1) {
+        await ctx.runMutation(internal.calls.setStatus, { callId, status: "transcribing", error: `attempt ${n} failed, retrying: ${msg}` });
+        await ctx.runMutation(internal.audit.log, {
+          actor: "system", action: "transcription_retry", entityType: "call", entityId: callId, reason: `Attempt ${n} failed (${msg}); retrying`,
+        });
+        await ctx.scheduler.runAfter(RETRY_DELAYS_MS[n - 1], internal.transcription.transcribeCall, { callId, attempt: n + 1 });
+        return { count: 0 };
+      }
       await ctx.runMutation(internal.calls.setStatus, { callId, status: "failed", error: msg });
       await ctx.runMutation(internal.audit.log, {
         actor: "system", action: "transcription_failed", entityType: "call", entityId: callId, reason: msg,
       });
-      throw e;
+      await ctx.runAction(internal.messaging.sendCallNotice, {
+        callId,
+        body: "Catch2Catch: your call was recorded, but the speech-to-text service failed, so there is no written summary yet. The recording is saved and the owner can play it on the dashboard.",
+      });
+      return { count: 0 };
     }
   },
 });
 
 function strip(s: Segment) {
-  return { startMs: s.startMs, endMs: s.endMs, text: s.text, confidence: s.confidence };
+  return { startMs: s.startMs, endMs: s.endMs, text: s.text, confidence: s.confidence, ...(s.faint ? { faint: true } : {}) };
 }
 function withRole(segs: Segment[], role: "buyer" | "seller"): RoleSegment[] {
   return segs.map((s) => ({ ...strip(s), role }));

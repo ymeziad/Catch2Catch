@@ -21,6 +21,8 @@ export type Segment = {
   confidence?: number;
   /** Only set when diarization was used (mono recordings). */
   speaker?: number;
+  /** Much quieter than this speaker's normal voice: usually the other person's voice leaking into the phone, or background talk. */
+  faint?: boolean;
 };
 
 type Word = { text: string; start: number; end: number; speaker?: number; confidence?: number };
@@ -33,15 +35,16 @@ export type TranscribeOptions = { diarize?: boolean; language?: string };
 //
 // Sending a whole call channel (minutes long, 8 kHz phone audio) in one request makes the STT model
 // skip short phrases: on a real call it dropped the seller's "Okay, that's fine" confirming a quantity
-// change, which it transcribed perfectly when given just those seconds. So each channel is cut at
-// pauses into pieces of at most MAX_CHUNK_S, transcribed separately, and the words are shifted back
-// onto the call's timeline.
+// change, which it transcribed perfectly when given just those seconds. So each channel is cut into
+// pieces of at most MAX_CHUNK_S that together cover EVERY second of the track (nothing is skipped,
+// however quiet), each cut placed at the quietest moment near the end of a piece so no word is split,
+// and the words are shifted back onto the call's timeline.
 
 const FRAME_MS = 20;
-const MIN_PAUSE_S = 0.6; // a silence at least this long is a safe place to cut
 const MAX_CHUNK_S = 20;
-const PAD_S = 0.3; // keep a little audio around each piece so word edges aren't clipped
+const MIN_CHUNK_S = 8; // look for the cut between MIN and MAX seconds into a piece
 const CHUNK_CONCURRENCY = 4;
+const CHUNK_ATTEMPTS = 3;
 
 type Pcm = { samples: Int16Array; sampleRate: number };
 
@@ -76,49 +79,70 @@ function pcmToWav(samples: Int16Array, sampleRate: number): Blob {
   return new Blob([header, bytes], { type: "audio/wav" });
 }
 
-/** Speech regions as [startSec, endSec], split at pauses and capped at MAX_CHUNK_S. */
-export function speechChunks(pcm: Pcm): Array<[number, number]> {
+/**
+ * Split the whole track into consecutive [startSec, endSec] pieces covering every second, each at most
+ * MAX_CHUNK_S long. Each cut sits in the middle of the quietest stretch between MIN_CHUNK_S and
+ * MAX_CHUNK_S into the piece (a pause between words), so words aren't cut in half.
+ */
+export function coverChunks(pcm: Pcm): Array<[number, number]> {
   const frameLen = Math.max(1, Math.round((pcm.sampleRate * FRAME_MS) / 1000));
-  const frames = Math.floor(pcm.samples.length / frameLen);
+  const frames = Math.ceil(pcm.samples.length / frameLen);
   if (frames === 0) return [];
-  const rms = new Float64Array(frames);
+  const energy = new Float64Array(frames);
   for (let f = 0; f < frames; f++) {
-    let sum = 0;
-    for (let i = f * frameLen; i < (f + 1) * frameLen; i++) sum += pcm.samples[i] * pcm.samples[i];
-    rms[f] = Math.sqrt(sum / frameLen);
+    let sum = 0, n = 0;
+    for (let i = f * frameLen; i < Math.min((f + 1) * frameLen, pcm.samples.length); i++) { sum += pcm.samples[i] * pcm.samples[i]; n++; }
+    energy[f] = n ? sum / n : 0;
   }
-  // Threshold from the track's own levels: well above its noise floor, well below its speech.
-  const sorted = [...rms].sort((a, b) => a - b);
-  const floor = sorted[Math.floor(frames * 0.2)];
-  const loud = sorted[Math.floor(frames * 0.95)];
-  const threshold = Math.max(floor * 3, loud * 0.05, 150);
-  const voiced = Array.from(rms, (r) => r > threshold);
-
-  const frameS = FRAME_MS / 1000;
-  const minPause = Math.round(MIN_PAUSE_S / frameS);
-  const regions: Array<[number, number]> = [];
-  let start = -1, silent = 0;
-  for (let f = 0; f < frames; f++) {
-    if (voiced[f]) {
-      if (start < 0) start = f;
-      silent = 0;
-    } else if (start >= 0 && ++silent >= minPause) {
-      regions.push([start * frameS, (f - silent + 1) * frameS]);
-      start = -1; silent = 0;
+  const perSec = 1000 / FRAME_MS;
+  const maxF = MAX_CHUNK_S * perSec, minF = MIN_CHUNK_S * perSec, smooth = Math.round(0.3 * perSec);
+  const out: Array<[number, number]> = [];
+  let start = 0;
+  while (start < frames) {
+    if (frames - start <= maxF) { out.push([start / perSec, frames / perSec]); break; }
+    // Quietest 0.3 s window in the search range; cut at its centre.
+    let best = start + maxF, bestE = Infinity;
+    for (let f = start + minF; f + smooth <= start + maxF; f++) {
+      let e = 0;
+      for (let k = f; k < f + smooth; k++) e += energy[k];
+      if (e < bestE) { bestE = e; best = f + Math.floor(smooth / 2); }
     }
-  }
-  if (start >= 0) regions.push([start * frameS, frames * frameS]);
-
-  // Merge neighbouring regions into pieces up to MAX_CHUNK_S; a single longer region is split evenly.
-  const chunks: Array<[number, number]> = [];
-  for (const [a, b] of regions) {
-    const last = chunks[chunks.length - 1];
-    if (last && b - last[0] <= MAX_CHUNK_S) last[1] = b;
-    else if (b - a <= MAX_CHUNK_S) chunks.push([a, b]);
-    else for (let s = a; s < b; s += MAX_CHUNK_S) chunks.push([s, Math.min(b, s + MAX_CHUNK_S)]);
+    out.push([start / perSec, best / perSec]);
+    start = best;
   }
   const total = pcm.samples.length / pcm.sampleRate;
-  return chunks.map(([a, b]) => [Math.max(0, a - PAD_S), Math.min(total, b + PAD_S)]);
+  return out.map(([a, b]) => [a, Math.min(b, total)]);
+}
+
+async function withRetries<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  let last: unknown;
+  for (let attempt = 1; attempt <= CHUNK_ATTEMPTS; attempt++) {
+    try { return await fn(); } catch (e) {
+      last = e;
+      console.warn(`[stt] ${label} attempt ${attempt} failed: ${e instanceof Error ? e.message : String(e)}`);
+      await new Promise((r) => setTimeout(r, attempt * 1500));
+    }
+  }
+  throw last instanceof Error ? last : new Error(String(last));
+}
+
+/**
+ * Mark segments that are much quieter than this channel's normal speech. Nothing is removed: the flag
+ * lets the order analysis treat echo of the other caller or background talk as context, not as a term.
+ */
+export function markFaint(monoWav: Uint8Array, segments: Segment[]): Segment[] {
+  const pcm = readMonoPcm(monoWav);
+  const rmsOf = (aMs: number, bMs: number) => {
+    const a = Math.max(0, Math.floor((aMs / 1000) * pcm.sampleRate));
+    const b = Math.min(pcm.samples.length, Math.max(a + 1, Math.ceil((bMs / 1000) * pcm.sampleRate)));
+    let sum = 0;
+    for (let i = a; i < b; i++) sum += pcm.samples[i] * pcm.samples[i];
+    return Math.sqrt(sum / Math.max(1, b - a));
+  };
+  const levels = segments.map((s) => rmsOf(s.startMs, s.endMs));
+  const sorted = [...levels].sort((x, y) => x - y);
+  const typical = sorted.length ? sorted[Math.floor(sorted.length * 0.75)] : 0; // this speaker's normal voice
+  return segments.map((s, i) => ({ ...s, faint: typical > 0 && levels[i] < typical * 0.2 }));
 }
 
 /**
@@ -127,7 +151,7 @@ export function speechChunks(pcm: Pcm): Array<[number, number]> {
  */
 export async function transcribeChannel(monoWav: Uint8Array, role: Role, opts: TranscribeOptions = {}): Promise<Segment[]> {
   const pcm = readMonoPcm(monoWav);
-  const chunks = speechChunks(pcm);
+  const chunks = coverChunks(pcm);
   const provider = (process.env.STT_PROVIDER ?? "xai").toLowerCase();
   const results: Word[][] = new Array(chunks.length);
   let next = 0;
@@ -137,13 +161,15 @@ export async function transcribeChannel(monoWav: Uint8Array, role: Role, opts: T
       const [a, b] = chunks[k];
       const piece = pcm.samples.subarray(Math.floor(a * pcm.sampleRate), Math.ceil(b * pcm.sampleRate));
       const blob = pcmToWav(piece, pcm.sampleRate);
-      const words = provider === "openai" ? await openaiWords(blob, opts) : await xaiWords(blob, opts);
+      const words = await withRetries(`${role} piece ${k + 1}/${chunks.length}`, () =>
+        provider === "openai" ? openaiWords(blob, opts) : xaiWords(blob, opts),
+      );
       results[k] = words.map((w) => ({ ...w, start: w.start + a, end: w.end + a }));
     }
   };
   await Promise.all(Array.from({ length: Math.min(CHUNK_CONCURRENCY, chunks.length) }, worker));
   const words = results.flat().sort((x, y) => x.start - y.start);
-  const segments = groupWords(words);
+  const segments = markFaint(monoWav, groupWords(words));
   console.log(`[stt] ${provider} ${role}: ${chunks.length} pieces, ${words.length} words -> ${segments.length} segments`);
   return segments;
 }
