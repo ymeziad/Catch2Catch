@@ -3,7 +3,7 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { normalizePhone, samePhone } from "./lib/phone";
-import { twilioCredsFromEnv, twilioSendSms } from "./lib/twilio";
+import { messageChannelFromEnv, twilioCredsFromEnv, twilioSendSms } from "./lib/twilio";
 
 export const MAX_SMS_CHARS = 600;
 const UNKNOWN_SENDER_REPLY = "We couldn't find an order for this number.";
@@ -13,8 +13,9 @@ const NO_PENDING_REPLY = "Thanks — there is no order waiting for your confirma
 
 /**
  * Contract: internal.messaging.sendSms({ to, body, relatedType?, relatedId? })
- * Inserts a `messages` row and sends via Twilio. If sending fails or SMS is blocked
- * (A2P 10DLC, trial restrictions, missing creds), status = "simulated" so the dashboard still shows it.
+ * Inserts a `messages` row and sends via Twilio, over SMS or WhatsApp depending on MESSAGE_CHANNEL.
+ * If sending fails or the message is blocked (A2P 10DLC, trial restrictions, recipient not joined to
+ * the WhatsApp sandbox, missing creds), status = "simulated" so the dashboard still shows it.
  */
 export const sendSms = internalAction({
   args: {
@@ -27,14 +28,15 @@ export const sendSms = internalAction({
     const to = normalizePhone(args.to);
     const body = args.body.length > MAX_SMS_CHARS ? args.body.slice(0, MAX_SMS_CHARS - 1) + "…" : args.body;
     const creds = twilioCredsFromEnv();
-    const simulate = process.env.SMS_SIMULATE === "1" || !creds;
+    const sender = messageChannelFromEnv();
+    const simulate = process.env.SMS_SIMULATE === "1" || !creds || !sender;
 
     let status: "sent" | "simulated" | "failed" = "simulated";
     let twilioSid: string | undefined;
     let note = "";
-    if (!simulate && creds) {
+    if (!simulate && creds && sender) {
       try {
-        const r = await twilioSendSms(creds, to, body, smsStatusCallbackUrl());
+        const r = await twilioSendSms(creds, to, body, smsStatusCallbackUrl(), sender);
         twilioSid = r.sid;
         status = "sent";
       } catch (e) {
@@ -49,12 +51,13 @@ export const sendSms = internalAction({
     const messageId = await ctx.runMutation(internal.messaging.recordMessage, {
       direction: "out",
       to,
-      from: creds?.fromNumber ?? "simulated",
+      from: sender?.from ?? "simulated",
       body,
       relatedType: args.relatedType,
       relatedId: args.relatedId,
       twilioSid,
       status,
+      channel: sender?.channel,
       deliveryStatus: twilioSid ? "queued" : undefined,
     });
     await ctx.runMutation(internal.audit.log, {
@@ -62,7 +65,9 @@ export const sendSms = internalAction({
       action: status === "sent" ? "sms_sent" : "sms_simulated",
       entityType: args.relatedType ?? "message",
       entityId: args.relatedId ?? messageId,
-      reason: status === "sent" ? `SMS sent to ${to}` : `SMS to ${to} recorded as simulated (${note})`,
+      reason: status === "sent"
+        ? `${sender?.channel === "whatsapp" ? "WhatsApp message" : "SMS"} sent to ${to}`
+        : `Message to ${to} recorded as simulated (${note})`,
       evidenceRefs: [{ type: "message", id: messageId, detail: body.slice(0, 120) }],
     });
     return { messageId, status, twilioSid };
@@ -79,6 +84,7 @@ export const recordMessage = internalMutation({
     relatedId: v.optional(v.string()),
     twilioSid: v.optional(v.string()),
     status: v.union(v.literal("sent"), v.literal("simulated"), v.literal("failed"), v.literal("received")),
+    channel: v.optional(v.union(v.literal("sms"), v.literal("whatsapp"))),
     deliveryStatus: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -113,6 +119,10 @@ const ERROR_TEXT: Record<string, string> = {
   "30006": "landline or unreachable carrier",
   "30008": "unknown carrier error",
   "21610": "recipient replied STOP",
+  "63015": "recipient has not joined the WhatsApp sandbox",
+  "63016": "outside WhatsApp's 24-hour reply window",
+  "63003": "not a WhatsApp number",
+  "63007": "WhatsApp sender not set up",
 };
 
 /**

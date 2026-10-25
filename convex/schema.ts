@@ -252,6 +252,7 @@ export default defineSchema({
       v.literal("failed"),
       v.literal("received"),
     ),
+    channel: v.optional(v.union(v.literal("sms"), v.literal("whatsapp"))),
     // Carrier delivery result reported by Twilio's status callback.
     deliveryStatus: v.optional(v.string()), // queued | sending | sent | delivered | undelivered | failed
     deliveryError: v.optional(v.string()), // e.g. "30034: sender number not registered for A2P 10DLC"

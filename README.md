@@ -42,7 +42,18 @@ Then set the Convex environment variables listed in [`.env.example`](.env.exampl
 1. Get a Twilio number. On a **trial account** you can only call/text verified numbers, so verify every phone you test with.
 2. In the Twilio console, set the number's **Voice** webhook to `POST https://<deployment>.convex.site/twilio/voice` and its **Messaging** webhook to `POST https://<deployment>.convex.site/twilio/sms`. (The `.convex.site` host is where Convex serves HTTP actions; `npx convex dev` prints it.)
 3. Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_NUMBER`, `SELLER_PHONE`, `XAI_API_KEY`, and optionally `CONSENT_AUDIO_URL`.
-4. If outbound texts don't arrive (A2P 10DLC carrier registration), don't fight it: `sendSms` records them as `simulated` and the dashboard still shows them.
+4. If outbound messages don't arrive, `sendSms` records them as `simulated` and the dashboard still shows them, with the reason.
+
+### Order summaries over WhatsApp
+
+US carriers block SMS from Twilio numbers that haven't completed A2P 10DLC registration, which takes days. Order summaries and CONFIRM / DISPUTE replies can go over WhatsApp instead, through Twilio's WhatsApp sandbox:
+
+1. Twilio Console → Messaging → Try it out → Send a WhatsApp message. Accept the terms; the page shows your sandbox join code.
+2. In the sandbox settings, set **When a message comes in** to `POST https://<deployment>.convex.site/twilio/sms` and **Status callback URL** to `POST https://<deployment>.convex.site/twilio/sms-status`.
+3. `npx convex env set MESSAGE_CHANNEL whatsapp`
+4. Everyone who should get summaries (buyer phone, seller phone) sends `join <code>` on WhatsApp to +1 415 523 8886. Joining lasts 3 days. Free-form messages only reach someone who messaged the sandbox in the last 24 hours, so join shortly before a demo.
+
+Calls still use the regular Twilio number; only messages move to WhatsApp.
 
 ## Repo layout
 

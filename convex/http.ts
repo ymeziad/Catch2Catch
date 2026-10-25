@@ -19,6 +19,7 @@ import { parseForm, twiml, twilioCredsFromEnv, twilioDeleteRecording, validateTw
  *                                     otherwise DELETE the recording at Twilio so nothing is kept.
  *   SMS: POST /twilio/sms             insert messages row, schedule messaging.routeInbound
  *        POST /twilio/sms-status      carrier delivery updates for outbound texts
+ *        (WhatsApp uses the same two routes; set them in the Twilio WhatsApp sandbox settings.)
  *
  * Twilio dual-channel: channel 1 = inbound caller (buyer), channel 2 = dialed party (seller).
  */
@@ -229,17 +230,25 @@ http.route({
     const g = await guard(request);
     if ("reject" in g) return g.reject;
     const { params } = g;
-    const from = params.From ?? "";
+    // SMS sends "+1...", WhatsApp sends "whatsapp:+1..."; store and route on the bare phone number.
+    const channel = (params.From ?? "").startsWith("whatsapp:") ? "whatsapp" : "sms";
+    const from = (params.From ?? "").replace(/^whatsapp:/, "");
+    const to = (params.To ?? process.env.TWILIO_NUMBER ?? "").replace(/^whatsapp:/, "");
     const body = params.Body ?? "";
     const messageId = await ctx.runMutation(internal.messaging.recordMessage, {
       direction: "in",
-      to: params.To ?? process.env.TWILIO_NUMBER ?? "",
+      to,
       from,
       body,
       twilioSid: params.MessageSid,
       status: "received",
+      channel,
     });
-    await ctx.scheduler.runAfter(0, internal.messaging.routeInbound, { fromPhone: from, body, messageId });
+    // "join <code>" is the WhatsApp sandbox opt-in; Twilio answers it, so don't route it as an order reply.
+    const isSandboxJoin = channel === "whatsapp" && /^join\s+\S+/i.test(body.trim());
+    if (!isSandboxJoin) {
+      await ctx.scheduler.runAfter(0, internal.messaging.routeInbound, { fromPhone: from, body, messageId });
+    }
     // Empty TwiML: replies (if any) go out through sendSms so they are logged in `messages`.
     return twiml("");
   }),

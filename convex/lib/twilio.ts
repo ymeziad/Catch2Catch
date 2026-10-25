@@ -108,15 +108,39 @@ export function twilioCredsFromEnv(): TwilioCreds | null {
   return { accountSid, authToken, fromNumber };
 }
 
-/** Send an SMS through the Twilio REST API. Throws on non-2xx. */
+export type MessageChannel = "sms" | "whatsapp";
+
+/**
+ * Which channel outbound messages use. MESSAGE_CHANNEL=whatsapp sends through Twilio's WhatsApp
+ * sender (the sandbox number +1 415 523 8886 unless TWILIO_WHATSAPP_NUMBER is set); anything else is SMS.
+ */
+export function messageChannelFromEnv(): { channel: MessageChannel; from: string } | null {
+  if ((process.env.MESSAGE_CHANNEL ?? "sms").toLowerCase() === "whatsapp") {
+    return { channel: "whatsapp", from: process.env.TWILIO_WHATSAPP_NUMBER ?? "+14155238886" };
+  }
+  const sms = process.env.TWILIO_NUMBER;
+  return sms ? { channel: "sms", from: sms } : null;
+}
+
+/** Twilio addresses WhatsApp users as "whatsapp:+1...". Plain phone numbers are SMS. */
+export function twilioAddress(channel: MessageChannel, phone: string): string {
+  return channel === "whatsapp" ? `whatsapp:${phone}` : phone;
+}
+
+/** Send an SMS (or WhatsApp message, via `channel`) through the Twilio REST API. Throws on non-2xx. */
 export async function twilioSendSms(
   creds: TwilioCreds,
   to: string,
   body: string,
   statusCallback?: string,
+  sender: { channel: MessageChannel; from: string } = { channel: "sms", from: creds.fromNumber },
 ): Promise<{ sid: string; status: string }> {
   const url = `https://api.twilio.com/2010-04-01/Accounts/${creds.accountSid}/Messages.json`;
-  const form = new URLSearchParams({ To: to, From: creds.fromNumber, Body: body });
+  const form = new URLSearchParams({
+    To: twilioAddress(sender.channel, to),
+    From: twilioAddress(sender.channel, sender.from),
+    Body: body,
+  });
   // Twilio POSTs each delivery update (sent, delivered, undelivered, failed) here.
   if (statusCallback) form.set("StatusCallback", statusCallback);
   const res = await fetch(url, {
@@ -129,7 +153,7 @@ export async function twilioSendSms(
   });
   const json = (await res.json().catch(() => ({}))) as { sid?: string; status?: string; message?: string; code?: number };
   if (!res.ok) {
-    throw new Error(`Twilio SMS failed (${res.status} ${json.code ?? ""}): ${json.message ?? "unknown"}`);
+    throw new Error(`Twilio send failed (${res.status} ${json.code ?? ""}): ${json.message ?? "unknown"}`);
   }
   return { sid: json.sid ?? "", status: json.status ?? "queued" };
 }

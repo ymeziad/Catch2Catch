@@ -24,8 +24,9 @@ export default function MessagesPage() {
     <div>
       <h1 className="text-2xl font-semibold">Messages</h1>
       <p className="text-sm text-zinc-600 mt-1">
-        Every SMS in and out. <b>simulated</b> means the text never reached the phone (trial account, or blocked by the
-        carrier, e.g. A2P 10DLC) but it is on record. Outbound texts also show the carrier&apos;s delivery result.
+        Every message in and out, by SMS or WhatsApp. <b>simulated</b> means it never reached the phone (blocked by
+        the carrier, or the person hasn&apos;t joined the WhatsApp sandbox) but it is on record. Outbound messages also
+        show the delivery result.
       </p>
       <ul className="mt-6 space-y-2">
         {messages === undefined && <li className="text-zinc-500 text-sm">Loading…</li>}
@@ -33,7 +34,7 @@ export default function MessagesPage() {
         {messages?.map((m) => (
           <li key={m._id} className="rounded-lg border bg-white p-3 text-sm">
             <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-              <span className={`rounded px-2 py-0.5 ${statusColor[m.status] ?? ""}`}>{m.direction} · {m.status}</span>
+              <span className={`rounded px-2 py-0.5 ${statusColor[m.status] ?? ""}`}>{m.channel === "whatsapp" ? "WhatsApp" : "SMS"} {m.direction} · {m.status}</span>
               <span className="font-mono">{m.from} → {m.to}</span>
               <span>{new Date(m.createdAt).toLocaleString()}</span>
               {m.relatedType && <span>{m.relatedType}{m.relatedId ? `:${m.relatedId.slice(0, 8)}…` : ""}</span>}
