@@ -18,6 +18,7 @@ import type * as disputes from "../disputes.js";
 import type * as http from "../http.js";
 import type * as ledger from "../ledger.js";
 import type * as lib_clock from "../lib/clock.js";
+import type * as lib_hash from "../lib/hash.js";
 import type * as lib_phone from "../lib/phone.js";
 import type * as lib_stt from "../lib/stt.js";
 import type * as lib_twilio from "../lib/twilio.js";
@@ -26,7 +27,9 @@ import type * as messages from "../messages.js";
 import type * as messaging from "../messaging.js";
 import type * as moderation from "../moderation.js";
 import type * as orderDesk from "../orderDesk.js";
+import type * as orderEdits from "../orderEdits.js";
 import type * as orders from "../orders.js";
+import type * as owner from "../owner.js";
 import type * as prices from "../prices.js";
 import type * as recordings from "../recordings.js";
 import type * as reminders from "../reminders.js";
@@ -34,6 +37,8 @@ import type * as seed from "../seed.js";
 import type * as shops from "../shops.js";
 import type * as transcription from "../transcription.js";
 import type * as transcripts from "../transcripts.js";
+import type * as translate from "../translate.js";
+import type * as voice from "../voice.js";
 
 import type {
   ApiFromModules,
@@ -52,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   ledger: typeof ledger;
   "lib/clock": typeof lib_clock;
+  "lib/hash": typeof lib_hash;
   "lib/phone": typeof lib_phone;
   "lib/stt": typeof lib_stt;
   "lib/twilio": typeof lib_twilio;
@@ -60,7 +66,9 @@ declare const fullApi: ApiFromModules<{
   messaging: typeof messaging;
   moderation: typeof moderation;
   orderDesk: typeof orderDesk;
+  orderEdits: typeof orderEdits;
   orders: typeof orders;
+  owner: typeof owner;
   prices: typeof prices;
   recordings: typeof recordings;
   reminders: typeof reminders;
@@ -68,6 +76,8 @@ declare const fullApi: ApiFromModules<{
   shops: typeof shops;
   transcription: typeof transcription;
   transcripts: typeof transcripts;
+  translate: typeof translate;
+  voice: typeof voice;
 }>;
 
 /**

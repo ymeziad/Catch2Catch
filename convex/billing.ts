@@ -6,6 +6,7 @@ import { DAY, demoNow, shortDate, shortId, usd } from "./lib/clock";
 import { pair, postEntryGroup } from "./ledger";
 import { cancelInvoiceReminders, cancelOrderReminders, scheduleInvoiceReminders } from "./reminders";
 import { openDisputeForShortPayment } from "./disputes";
+import { orderLink } from "./orderEdits";
 
 /**
  * Invoices and payments.
@@ -46,8 +47,8 @@ export const createInvoiceForOrder = internalMutation({
 
     const es = shop.language === "es";
     const body = es
-      ? `Factura del pedido ${shortId(orderId)}: ${usd(amountCents)}, vence el ${shortDate(dueAt)}. Responda si algo falta o está dañado.`
-      : `Invoice for order ${shortId(orderId)}: ${usd(amountCents)}, due ${shortDate(dueAt)}. Reply if anything is missing or damaged.`;
+      ? `Factura del pedido ${shortId(orderId)}: ${usd(amountCents)}, vence el ${shortDate(dueAt)}. ¿Quiere cambiar cantidades antes de que lo empaquemos? ${orderLink(orderId)} Responda si algo falta o está dañado.`
+      : `Invoice for order ${shortId(orderId)}: ${usd(amountCents)}, due ${shortDate(dueAt)}. Want to change amounts before we pack it? ${orderLink(orderId)} Reply if anything is missing or damaged.`;
     await ctx.scheduler.runAfter(0, internal.messaging.sendSms, { to: shop.phone, body, relatedType: "invoice", relatedId: invoiceId });
 
     await ctx.db.insert("auditLog", {

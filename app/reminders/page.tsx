@@ -3,14 +3,15 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { DemoTools, PageHeader, SectionTitle, statusWord, when } from "@/components/money";
+import { t } from "@/components/i18n";
 
 /** Reminders the C2C AI Assistant sent or will send. */
 const kindText: Record<string, (shop: string) => string> = {
-  order_unconfirmed: (s) => `Ask ${s} to confirm their order`,
-  payment_due_soon: (s) => `Remind ${s} that payment is coming up`,
-  payment_due: (s) => `Remind ${s} that payment is due today`,
-  payment_late: (s) => `Tell ${s} their payment is late`,
-  escalate_owner: (s) => `Let you know ${s} still hasn't paid`,
+  order_unconfirmed: (s) => t("Ask {shop} to confirm their order", { shop: s }),
+  payment_due_soon: (s) => t("Remind {shop} that payment is coming up", { shop: s }),
+  payment_due: (s) => t("Remind {shop} that payment is due today", { shop: s }),
+  payment_late: (s) => t("Tell {shop} their payment is late", { shop: s }),
+  escalate_owner: (s) => t("Let you know {shop} still hasn't paid", { shop: s }),
 };
 
 export default function RemindersPage() {
@@ -21,22 +22,22 @@ export default function RemindersPage() {
   const Row = ({ r, showStatus = true }: { r: NonNullable<typeof rows>[number]; showStatus?: boolean }) => (
     <li className={`grid items-baseline gap-x-6 gap-y-1 py-4 sm:grid-cols-[9rem_1fr_6rem] ${r.status === "cancelled" ? "text-ink/45" : ""}`}>
       <span className="whitespace-nowrap text-base text-ink/50">{when(r.scheduledFor)}</span>
-      <span>{kindText[r.kind](r.shopName ?? "the shop")}</span>
-      {showStatus && <span className={`text-base sm:text-right ${r.status === "sent" ? (r.kind === "escalate_owner" ? "text-wait" : "text-teal") : "text-ink/50"}`}>{cap1(statusWord[r.status])}</span>}
+      <span>{kindText[r.kind](r.shopName ?? t("the shop"))}</span>
+      {showStatus && <span className={`text-base sm:text-right ${r.status === "sent" ? (r.kind === "escalate_owner" ? "text-wait" : "text-teal") : "text-ink/50"}`}>{cap1(statusWord(r.status))}</span>}
     </li>
   );
 
   return (
     <div className="space-y-12">
-      <PageHeader title="Reminders" />
+      <PageHeader title={t("Reminders")} />
       <section>
-        <SectionTitle>Coming up</SectionTitle>
-        {rows !== undefined && upcoming.length === 0 && <p className="mt-4 text-lg text-ink/60">No reminders are scheduled.</p>}
+        <SectionTitle>{t("Coming up")}</SectionTitle>
+        {rows !== undefined && upcoming.length === 0 && <p className="mt-4 text-lg text-ink/60">{t("No reminders are scheduled.")}</p>}
         <ul className="mt-4 divide-y divide-line text-lg">{upcoming.map((r) => <Row key={r._id} r={r} showStatus={false} />)}</ul>
       </section>
       {done.length > 0 && (
         <section>
-          <SectionTitle>Already handled</SectionTitle>
+          <SectionTitle>{t("Already handled")}</SectionTitle>
           <ul className="mt-4 divide-y divide-line text-lg">{done.map((r) => <Row key={r._id} r={r} />)}</ul>
         </section>
       )}

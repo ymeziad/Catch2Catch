@@ -6,7 +6,8 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { celebrate } from "@/components/celebrate";
-import { DemoTools, GotPaid, Oops, PageHeader, SectionTitle, cleanError, dueText, usd } from "@/components/money";
+import { DemoTools, GotPaid, Oops, PageHeader, SectionTitle, cap, cleanError, dueText, usd } from "@/components/money";
+import { t } from "@/components/i18n";
 
 /** Bills: who owes what, and a "Got paid" button. */
 // Fixed column widths (inline, so they never depend on CSS being rebuilt) keep amounts and buttons lined up.
@@ -23,12 +24,12 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-12">
-      <PageHeader title="Bills" />
+      <PageHeader title={t("Bills")} />
       <Oops msg={err} />
 
       <section>
-        <SectionTitle>Not paid yet</SectionTitle>
-        {invoices !== undefined && unpaid.length === 0 && <p className="mt-4 text-lg text-ink/60">Everyone is paid up.</p>}
+        <SectionTitle>{t("Not paid yet")}</SectionTitle>
+        {invoices !== undefined && unpaid.length === 0 && <p className="mt-4 text-lg text-ink/60">{t("Everyone is paid up.")}</p>}
         <ul className="mt-4 divide-y divide-line text-lg">
           {unpaid.map((inv) => {
             const due = dueText(inv.dueAt, now);
@@ -38,7 +39,7 @@ export default function InvoicesPage() {
                 <div className="min-w-0 flex-1">
                   <a href={`/shops/${inv.shopId}`} target="_blank" rel="noopener" className="underline-offset-4 hover:underline">{inv.shopName}</a>
                   <div className={`text-base ${onHold ? "text-wait" : due.late ? "text-late" : "text-ink/60"}`}>
-                    {onHold ? <Link href="/disputes" className="underline-offset-4 hover:underline">On hold because of a problem</Link> : due.late ? `${due.text.charAt(0).toUpperCase()}${due.text.slice(1)}` : `Due ${due.text.replace(/^due /, "")}`}
+                    {onHold ? <Link href="/disputes" className="underline-offset-4 hover:underline">{t("On hold because of a problem")}</Link> : cap(due.text)}
                   </div>
                 </div>
                 <div className="shrink-0 text-right" style={{ width: AMOUNT_W }}>{usd(inv.balanceCents)}</div>
@@ -61,13 +62,13 @@ export default function InvoicesPage() {
 
       {paid.length > 0 && (
         <section>
-          <SectionTitle>Paid</SectionTitle>
+          <SectionTitle>{t("Paid")}</SectionTitle>
           <ul className="mt-4 divide-y divide-line text-lg">
             {paid.map((inv) => (
               <li key={inv._id} className="flex flex-wrap items-center gap-x-6 py-4">
                 <a href={`/shops/${inv.shopId}`} target="_blank" rel="noopener" className="min-w-0 flex-1 text-ink/80 underline-offset-4 hover:underline">{inv.shopName}</a>
                 <span className="shrink-0 text-right text-ink/70" style={{ width: AMOUNT_W }}>{usd(inv.amountCents)}</span>
-                <span className="shrink-0 text-right text-base text-teal" style={{ width: ACTION_W }}>{inv.status === "credited" ? "Settled" : "Paid"}</span>
+                <span className="shrink-0 text-right text-base text-teal" style={{ width: ACTION_W }}>{t(inv.status === "credited" ? "Settled" : "Paid")}</span>
               </li>
             ))}
           </ul>

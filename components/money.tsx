@@ -5,6 +5,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
+import { getLang, locale, t, useTr } from "@/components/i18n";
 
 /** Shared UI + plain shop-counter wording for the money pages. */
 
@@ -19,19 +20,19 @@ export function usd(cents: number | undefined | null): string {
 
 export function when(ms: number | undefined): string {
   if (!ms) return "—";
-  return new Date(ms).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  return new Date(ms).toLocaleString(locale(), { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 export function day(ms: number): string {
-  return new Date(ms).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  return cap(new Date(ms).toLocaleDateString(locale(), { weekday: "short", month: "short", day: "numeric" }));
 }
 
 /** "due Thu, Oct 31" / "due today" / "5 days late" */
 export function dueText(dueAt: number, now: number): { text: string; late: boolean } {
   const days = Math.floor((now - dueAt) / 86_400_000);
-  if (days >= 1) return { text: `${days} ${days === 1 ? "day" : "days"} late`, late: true };
-  if (new Date(now).toDateString() === new Date(dueAt).toDateString()) return { text: "due today", late: false };
-  return { text: `due ${day(dueAt)}`, late: false };
+  if (days >= 1) return { text: days === 1 ? t("1 day late") : t("{n} days late", { n: days }), late: true };
+  if (new Date(now).toDateString() === new Date(dueAt).toDateString()) return { text: t("due today"), late: false };
+  return { text: t("due {date}", { date: day(dueAt) }), late: false };
 }
 
 // --------------------------------------------------------------------------- problems, in plain words
@@ -40,38 +41,38 @@ export type Rec = NonNullable<Doc<"disputes">["recommendation"]>;
 
 /** Capitalize the first letter (for quoted texts from shops). */
 export function cap(text: string): string {
-  const t = text.trim();
-  return t ? t[0].toUpperCase() + t.slice(1) : t;
+  const s = text.trim();
+  return s ? s[0].toUpperCase() + s.slice(1) : s;
 }
 
 /** What the yes-button says. */
 export function recAction(rec: Rec | undefined, cents: number): string {
   switch (rec) {
-    case "credit": return `Take ${usd(cents)} off`;
-    case "cash_refund": return `Refund ${usd(cents)}`;
-    case "replacement": return "Send it again";
-    case "reject_with_evidence": return "Tell them no";
-    default: return "Decide";
+    case "credit": return t("Take {amount} off", { amount: usd(cents) });
+    case "cash_refund": return t("Refund {amount}", { amount: usd(cents) });
+    case "replacement": return t("Send it again");
+    case "reject_with_evidence": return t("Tell them no");
+    default: return t("Decide");
   }
 }
 
 /** What the C2C AI Assistant suggests, as a full sentence. */
 export function recSentence(rec: Rec | undefined, cents: number): string {
   switch (rec) {
-    case "credit": return `Take ${usd(cents)} off (bill not paid yet).`;
-    case "cash_refund": return `Refund ${usd(cents)} (bill already paid).`;
-    case "replacement": return "Send the missing items with the next delivery.";
-    case "reject_with_evidence": return "Tell them no. What they're saying doesn't match our proof.";
-    case "escalate": return "It isn't sure about this one, so it's your call.";
-    default: return "It's still looking into this.";
+    case "credit": return t("Take {amount} off (bill not paid yet).", { amount: usd(cents) });
+    case "cash_refund": return t("Refund {amount} (bill already paid).", { amount: usd(cents) });
+    case "replacement": return t("Send the missing items with the next delivery.");
+    case "reject_with_evidence": return t("Tell them no. What they're saying doesn't match our proof.");
+    case "escalate": return t("It isn't sure about this one, so it's your call.");
+    default: return t("It's still looking into this.");
   }
 }
 
 /** One-line headline for a problem. */
 export function disputeHeadline(d: { requestedBy: string; shopMessage: string; shopMessageClean?: string; shopName: string }): string {
-  if (d.shopMessage) return `${d.shopName} texted: “${d.shopMessageClean ?? cap(d.shopMessage.split("\n").slice(-1)[0])}”`;
-  if (d.requestedBy === "agent") return `${d.shopName} paid less than they owe.`;
-  return `${d.shopName} has a problem with an order.`;
+  if (d.shopMessage) return t("{shop} texted: “{message}”", { shop: d.shopName, message: d.shopMessageClean ?? cap(d.shopMessage.split("\n").slice(-1)[0]) });
+  if (d.requestedBy === "agent") return t("{shop} paid less than they owe.", { shop: d.shopName });
+  return t("{shop} has a problem with an order.", { shop: d.shopName });
 }
 
 /** First few sentences of the AI's reasoning. */
@@ -95,17 +96,19 @@ const friendly: [RegExp, string][] = [
   [/^dispute_opened_sms$/, "heard from a shop about a problem"],
   [/^dispute_recommendation$/, "looked into a problem and suggested a fix"],
   [/^auto_approve_rule_applied$/, "fixed a small problem on its own"],
+  [/^order_changed_by_shop$/, "updated an order a shop changed"],
 ];
 export function friendlyAction(action: string): string | null {
-  for (const [re, label] of friendly) if (re.test(action)) return label;
+  for (const [re, label] of friendly) if (re.test(action)) return t(label);
   return null;
 }
 
 /** "A", "A and B", "A, B, and C" */
 export function joinWords(items: string[]): string {
+  const and = t("and");
   if (items.length <= 1) return items[0] ?? "";
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+  if (items.length === 2) return `${items[0]} ${and} ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}${getLang() === "es" ? "" : ","} ${and} ${items[items.length - 1]}`;
 }
 
 /** Collapse everything the assistant did within 5 minutes into one sentence. */
@@ -126,12 +129,15 @@ export function activitySentences(rows: { _id: string; at: number; action: strin
   }
   return groups.map((g) => {
     const labels = [...g.labels].reverse();
-    const shown = labels.length > 3 ? [...labels.slice(0, 2), `did ${labels.length - 2} other things`] : labels;
+    const shown = labels.length > 3 ? [...labels.slice(0, 2), t("did {n} other things", { n: labels.length - 2 })] : labels;
     return { key: g.key, at: g.at, sentence: cap(joinWords(shown)) + "." };
   });
 }
 
-export const actorName: Record<string, string> = { agent: "C2C AI", owner: "You", shop: "Shop", packer: "Warehouse", system: "House rules" };
+const actorNames: Record<string, string> = { agent: "C2C AI", owner: "You", shop: "Shop", packer: "Warehouse", system: "House rules" };
+export function actorName(actor: string): string {
+  return actorNames[actor] ? t(actorNames[actor]) : actor;
+}
 
 // --------------------------------------------------------------------------- building blocks
 
@@ -151,11 +157,14 @@ export const statusTone: Record<string, Tone> = {
   scheduled: "sky", sent: "go", cancelled: "plain",
 };
 
-export const statusWord: Record<string, string> = {
+const statusWords: Record<string, string> = {
   open: "not paid yet", partially_paid: "part paid", paid: "paid up", disputed: "problem", credited: "all settled",
   awaiting_approval: "needs you", approved: "done", rejected: "you said no", resolved: "done",
   scheduled: "coming up", sent: "sent", cancelled: "stopped",
 };
+export function statusWord(status: string): string {
+  return statusWords[status] ? t(statusWords[status]) : status;
+}
 
 /** Same header on every page: a colored emoji tile, the title, one plain line underneath. */
 /** Page title: the same on every page. */
@@ -219,10 +228,10 @@ export function DemoClock() {
   const reset = useMutation(api.reminders.resetClock);
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="mr-2">Date: {clock ? when(clock.demoNow) : "…"}{clock && clock.offsetDays > 0 && <span className="text-ink/50"> (+{clock.offsetDays} days)</span>}</span>
-      <button onClick={() => advance({ days: 1 })} className="btn bg-white px-3 py-1 text-base">+1 day</button>
-      <button onClick={() => advance({ days: 7 })} className="btn bg-white px-3 py-1 text-base">+7 days</button>
-      <button onClick={() => reset({})} className="px-2 py-1 text-base text-ink/60 hover:text-ink hover:underline underline-offset-4">Back to today</button>
+      <span className="mr-2">{t("Date:")} {clock ? when(clock.demoNow) : "…"}{clock && clock.offsetDays > 0 && <span className="text-ink/50"> {t("(+{n} days)", { n: clock.offsetDays })}</span>}</span>
+      <button onClick={() => advance({ days: 1 })} className="btn bg-white px-3 py-1 text-base">{t("+1 day")}</button>
+      <button onClick={() => advance({ days: 7 })} className="btn bg-white px-3 py-1 text-base">{t("+7 days")}</button>
+      <button onClick={() => reset({})} className="px-2 py-1 text-base text-ink/60 hover:text-ink hover:underline underline-offset-4">{t("Back to today")}</button>
     </div>
   );
 }
@@ -232,7 +241,9 @@ export function DemoTools({ open = false }: { open?: boolean }) {
   const shops = useQuery(api.billing.listShops, {});
   const createDemo = useAction(api.seed.createDemoOrder);
   const text = useAction(api.moderation.sendShopText);
+  const invoices = useQuery(api.billing.listInvoices, {});
   const [popup, setPopup] = useState("");
+  const tr = useTr([popup]);
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
   async function run(label: string, fn: () => Promise<unknown>) {
@@ -241,8 +252,8 @@ export function DemoTools({ open = false }: { open?: boolean }) {
     setBusy("");
   }
   return (
-    <details open={open} className="border-t border-line pt-6 text-base">
-      <summary className="cursor-pointer text-teal hover:underline underline-offset-4">Try it out {busy && <span className="text-ink/60">({busy}…)</span>}</summary>
+    <details open={open} className="border-t-2 border-line pt-6 text-base">
+      <summary className="cursor-pointer text-teal hover:underline underline-offset-4">{t("Try it out")} {busy && <span className="text-ink/60">({t(busy)}…)</span>}</summary>
       <div className="mt-5 space-y-5">
         <DemoClock />
         <Oops msg={err} />
@@ -250,25 +261,29 @@ export function DemoTools({ open = false }: { open?: boolean }) {
           <div key={s._id} className="grid gap-2 sm:grid-cols-[11rem_1fr]">
             <span className="pt-1 text-ink/80">{s.name}</span>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-ink/60">New order:</span>
+              <span className="text-sm text-ink/60">{t("New order:")}</span>
               {(["match", "short", "none"] as const).map((p) => (
                 <button key={p} disabled={!!busy} onClick={() => run("Making the order", () => createDemo({ shopId: s._id, packing: p }))}
                   className="btn bg-white px-2 py-1 text-sm">
-                  {p === "match" ? "Packed right" : p === "short" ? "Packed short" : "Not scanned"}
+                  {t(p === "match" ? "Packed right" : p === "short" ? "Packed short" : "Not scanned")}
                 </button>
               ))}
-              <ShopText disabled={!!busy} onSend={(body) => run("Checking the text", async () => { const r = await text({ shopId: s._id, body }); if (r.blocked) setPopup(r.reason ?? "This message isn\u2019t about an order."); })} />
+              {(() => {
+                const latest = invoices?.find((i) => i.shopId === s._id);
+                return latest ? <a href={`/order/${latest.orderId}`} target="_blank" rel="noopener" className="text-sm text-teal underline-offset-4 hover:underline">{t("Change their last order (as the shop)")}</a> : null;
+              })()}
+              <ShopText disabled={!!busy} onSend={(body) => run("Checking the text", async () => { const r = await text({ shopId: s._id, body }); if (r.blocked) setPopup(r.reason ?? t("This message isn’t about an order.")); })} />
             </div>
           </div>
         ))}
-        {shops?.length === 0 && <p className="text-ink/60">No shops yet. Run <code>npx convex run seed:seedDemo</code>.</p>}
+        {shops?.length === 0 && <p className="text-ink/60">{t("No shops yet.")} <code>npx convex run seed:seedDemo</code></p>}
         {popup && (
           <div role="alertdialog" aria-modal="true" className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4" onClick={() => setPopup("")}>
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-              <h2 className="text-xl font-semibold! text-late">This message isn&apos;t allowed</h2>
-              <p className="mt-2 text-lg text-ink/80">{popup}</p>
-              <p className="mt-2 text-base text-ink/60">Texts need to be about an order, like a missing or damaged item.</p>
-              <button autoFocus onClick={() => setPopup("")} className="btn mt-5 bg-go px-4 py-2 text-base text-white">OK</button>
+              <h2 className="text-xl font-semibold! text-late">{t("This message isn’t allowed")}</h2>
+              <p className="mt-2 text-lg text-ink/80">{tr(popup)}</p>
+              <p className="mt-2 text-base text-ink/60">{t("Texts need to be about an order, like a missing or damaged item.")}</p>
+              <button autoFocus onClick={() => setPopup("")} className="btn mt-5 bg-go px-4 py-2 text-base text-white">{t("OK")}</button>
             </div>
           </div>
         )}
@@ -281,8 +296,8 @@ function ShopText({ onSend, disabled }: { onSend: (body: string) => void; disabl
   const [body, setBody] = useState("");
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
-      <input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Shop texts: missing 2 cases of Dr Pepper" className="w-72 rounded-lg border border-line bg-white px-2 py-1 text-sm" />
-      <button disabled={disabled || !body} onClick={() => { onSend(body); setBody(""); }} className="btn bg-white px-2 py-1 text-sm">Send as shop</button>
+      <input value={body} onChange={(e) => setBody(e.target.value)} placeholder={t("Shop texts: missing 2 cases of Dr Pepper")} className="w-72 rounded-lg border border-line bg-white px-2 py-1 text-sm" />
+      <button disabled={disabled || !body} onClick={() => { onSend(body); setBody(""); }} className="btn bg-white px-2 py-1 text-sm">{t("Send as shop")}</button>
     </span>
   );
 }
@@ -295,17 +310,17 @@ export function GotPaid({ balance, onPay, disabled }: { balance: number; onPay: 
     return (
       <span className="inline-flex items-center gap-2">
         <span>$</span>
-        <input autoFocus value={amt} onChange={(e) => setAmt(e.target.value)} inputMode="decimal" className="w-24 rounded-lg border border-line px-2 py-2" aria-label="How much they paid" />
+        <input autoFocus value={amt} onChange={(e) => setAmt(e.target.value)} inputMode="decimal" className="w-24 rounded-lg border border-line px-2 py-2" aria-label={t("How much they paid")} />
         <button disabled={disabled || !amt} onClick={() => { const c = Math.round(parseFloat(amt) * 100); if (c > 0) onPay(c); setAmt(""); setOther(false); }}
-          className="btn bg-go px-3 py-2 text-white">Save</button>
-        <button onClick={() => setOther(false)} className="px-2 py-2 text-ink/60">Never mind</button>
+          className="btn bg-go px-3 py-2 text-white">{t("Save")}</button>
+        <button onClick={() => setOther(false)} className="px-2 py-2 text-ink/60">{t("Never mind")}</button>
       </span>
     );
   }
   return (
     <span className="flex items-center justify-end gap-4 whitespace-nowrap">
-      <button onClick={() => setOther(true)} className="text-base text-ink/60 underline-offset-4 hover:text-ink hover:underline">Other amount</button>
-      <button disabled={disabled} onClick={() => onPay(balance)} className="btn bg-go px-4 py-2 text-base text-white">Got paid</button>
+      <button onClick={() => setOther(true)} className="text-base text-ink/60 underline-offset-4 hover:text-ink hover:underline">{t("Other amount")}</button>
+      <button disabled={disabled} onClick={() => onPay(balance)} className="btn bg-go px-4 py-2 text-base text-white">{t("Got paid")}</button>
     </span>
   );
 }
@@ -321,7 +336,7 @@ export function BackButton() {
       <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
       </svg>
-      Back
+      {t("Back")}
     </button>
   );
 }

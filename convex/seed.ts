@@ -60,12 +60,12 @@ async function seedLatePayerHistory(ctx: MutationCtx, shopId: Id<"shops">, now: 
     const amount = 1450 * 5 + 1400 * 5;
     const dueAt = issuedAt + shop.paymentTermsDays * DAY;
     const invoiceId = await ctx.db.insert("invoices", { orderId, shopId, amountCents: amount, balanceCents: 0, issuedAt, dueAt, status: "paid" });
-    await postEntryGroup(ctx, pair("accounts_receivable", "sales", amount), "invoice", invoiceId, "Seed history: invoice", issuedAt);
-    const paymentId = await ctx.db.insert("payments", { invoiceId, amountCents: amount, method: "check", receivedAt: dueAt + daysLate * DAY, note: "seed history: paid late" });
-    await postEntryGroup(ctx, pair("cash", "accounts_receivable", amount), "payment", paymentId, "Seed history: late payment", dueAt + daysLate * DAY);
+    await postEntryGroup(ctx, pair("accounts_receivable", "sales", amount), "invoice", invoiceId, "Earlier bill", issuedAt);
+    const paymentId = await ctx.db.insert("payments", { invoiceId, amountCents: amount, method: "check", receivedAt: dueAt + daysLate * DAY, note: "paid late" });
+    await postEntryGroup(ctx, pair("cash", "accounts_receivable", amount), "payment", paymentId, "Earlier bill, paid late", dueAt + daysLate * DAY);
     await ctx.db.insert("disputes", {
       invoiceId, orderId, shopId, shopMessage: "Missing 2 cases of coke", claimedItems: [{ sku: "COKE-12OZ-24", qty: 2, reason: "says missing" }],
-      recommendation: "reject_with_evidence", reasoning: "Seed history: packing scan matched the order.", evidenceRefs: [], amountCents: 0,
+      recommendation: "reject_with_evidence", reasoning: "The packing scan matched the order.", evidenceRefs: [], amountCents: 0,
       status: "approved", requestedBy: "shop", decidedBy: "owner", decidedAt: issuedAt + 3 * DAY,
     });
   }
@@ -201,6 +201,13 @@ export const cleanUpLabels = internalMutation({
       if (/demo order created/i.test(a.reason) || a.action === "demo_order_created") {
         await ctx.db.patch(a._id, { action: "order_created", reason: a.reason.replace(/^Demo order created/i, "New order created") }); n++;
       }
+    }
+    const renames: [RegExp, string][] = [[/^Seed history: invoice$/, "Earlier bill"], [/^Seed history: late payment$/, "Earlier bill, paid late"]];
+    for (const e of await ctx.db.query("ledgerEntries").collect()) {
+      for (const [re, to] of renames) if (re.test(e.memo)) { await ctx.db.patch(e._id, { memo: to }); n++; }
+    }
+    for (const d of await ctx.db.query("disputes").collect()) {
+      if (d.reasoning?.startsWith("Seed history: ")) { await ctx.db.patch(d._id, { reasoning: d.reasoning.replace("Seed history: packing", "The packing") }); n++; }
     }
     return `Cleaned ${n} records`;
   },

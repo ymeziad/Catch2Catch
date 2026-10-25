@@ -287,5 +287,21 @@ export default defineSchema({
   settings: defineTable({
     demoClockOffsetMs: v.number(),
     ownerPhone: v.string(),
+    ownerLang: v.optional(v.string()), // "en" | "es": the dashboard and the voice use it
+    lastMorningTextDay: v.optional(v.string()), // no longer used (kept so existing rows still match the schema)
   }),
+
+  // Claude translations of text that isn't fixed in the app (AI summaries, shop texts), cached so each is paid for once.
+  translations: defineTable({
+    key: v.string(), // lang + hash of the source text
+    lang: v.string(),
+    source: v.string(),
+    text: v.string(),
+  }).index("by_key", ["key"]),
+
+  // "Read it to me" audio from ElevenLabs, cached so repeating the same words costs nothing.
+  voiceClips: defineTable({
+    key: v.string(),
+    storageId: v.id("_storage"),
+  }).index("by_key", ["key"]),
 });
