@@ -8,7 +8,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { celebrate } from "@/components/celebrate";
 import { DemoTools, GotPaid, Oops, PageHeader, SectionTitle, cleanError, dueText, usd } from "@/components/money";
 
-/** OWNER: Amaan. Bills: who owes what, and a "Got paid" button. */
+/** Bills: who owes what, and a "Got paid" button. */
 // Fixed column widths (inline, so they never depend on CSS being rebuilt) keep amounts and buttons lined up.
 const AMOUNT_W = "8rem";
 const ACTION_W = "19rem";

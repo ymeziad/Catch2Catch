@@ -6,7 +6,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { DAY, HOUR, demoNow, nextMorning9amPT, ownerPhone, shortDate, shortId, usd } from "./lib/clock";
 
 /**
- * OWNER: Amaan. Automatic reminders, driven by a cron every minute (convex/crons.ts).
+ * Automatic reminders, driven by a cron every minute (convex/crons.ts).
  *
  * Invoice schedule:  payment_due_soon (due - 2d) · payment_due (due) · payment_late (due + 3d) · escalate_owner (due + 7d)
  * Memory over time:  a shop that paid late 2+ times in the last 90 days skips "due soon" and escalates at due + 3d.
@@ -187,7 +187,7 @@ export const processDue = internalMutation({
   handler: async (ctx) => {
     const now = await demoNow(ctx);
 
-    // 1) Unconfirmed orders without reminders get a plan (so Person 2 doesn't have to call us).
+    // 1) Unconfirmed orders without reminders get a plan (so nobody has to chase confirmations by phone).
     const unconfirmed = await ctx.db.query("orders").withIndex("by_status", (q) => q.eq("status", "verbal_agreement")).order("desc").take(50);
     for (const o of unconfirmed) {
       if (o.buyerConfirmedAt && o.sellerConfirmedAt) continue;

@@ -4,7 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { DemoTools, PageHeader, SectionTitle, statusWord, when } from "@/components/money";
 
-/** OWNER: Amaan. Reminders the C2C AI Assistant sent or will send. */
+/** Reminders the C2C AI Assistant sent or will send. */
 const kindText: Record<string, (shop: string) => string> = {
   order_unconfirmed: (s) => `Ask ${s} to confirm their order`,
   payment_due_soon: (s) => `Remind ${s} that payment is coming up`,

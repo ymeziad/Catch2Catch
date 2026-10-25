@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import { demoNow } from "./lib/clock";
 
 /**
- * OWNER: Amaan. A shop's track record: every purchase, how they paid, every problem,
+ * A shop's track record: every purchase, how they paid, every problem,
  * and a short plain-English summary written by the C2C AI Assistant (Claude).
  */
 

@@ -3,7 +3,7 @@ import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 
 /**
- * OWNER: Person 2 (Subhan). Apify reference prices + the price flag rule.
+ * Apify reference prices + the price flag rule.
  *
  * Retail reference prices come from Walmart search results scraped by an Apify Store actor
  * (default `automation-lab/walmart-scraper`, override with env APIFY_WALMART_ACTOR).

@@ -7,7 +7,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { BackButton, Checking, SectionTitle, usd } from "@/components/money";
 
-/** OWNER: Amaan. One shop's track record: AI summary, numbers, every purchase and problem. */
+/** One shop's track record: AI summary, numbers, every purchase and problem. */
 export function ShopView() {
   const { id } = useParams<{ id: string }>();
   const shopId = id as Id<"shops">;

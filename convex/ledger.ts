@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 
 /**
- * OWNER: Amaan. Double-entry ledger. The books must always balance.
+ * Double-entry ledger. The books must always balance.
  *
  *   Invoice issued         Dr accounts_receivable   Cr sales
  *   Payment received       Dr cash                  Cr accounts_receivable

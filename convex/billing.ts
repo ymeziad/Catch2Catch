@@ -8,7 +8,7 @@ import { cancelInvoiceReminders, cancelOrderReminders, scheduleInvoiceReminders 
 import { openDisputeForShortPayment } from "./disputes";
 
 /**
- * OWNER: Amaan. Invoices and payments.
+ * Invoices and payments.
  * Contract: internal.billing.createInvoiceForOrder({ orderId }) — called by orders.confirmOrder when both confirmed.
  */
 

@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { PageHeader, actorName, when } from "@/components/money";
 
-/** OWNER: Amaan. Everything that happened, who did it, and why. */
+/** Everything that happened, who did it, and why. */
 const who = ["", "agent", "owner", "shop", "system"];
 
 export default function AuditPage() {

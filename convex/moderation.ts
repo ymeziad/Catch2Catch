@@ -3,7 +3,7 @@ import { api } from "./_generated/api";
 import { v } from "convex/values";
 
 /**
- * OWNER: Amaan. "Try it out" -> "Send as shop": Claude checks the text first.
+ * "Try it out" -> "Send as shop": Claude checks the text first.
  * Nonsense, rude or off-topic texts are blocked with a reason (shown as a pop-up); real ones go through
  * the same path as a real inbound SMS.
  */

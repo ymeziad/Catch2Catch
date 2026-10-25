@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 
 /**
- * OWNER: Person 2 (Subhan). Product catalog: seed import, barcodes, wholesale and retail reference prices.
+ * Product catalog: seed import, barcodes, wholesale and retail reference prices.
  * NOTE: the public mutations are unauthenticated for the hackathon demo, like admin.ts.
  */
 

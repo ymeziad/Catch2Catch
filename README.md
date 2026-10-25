@@ -37,9 +37,9 @@ npm run dev           # Next.js on http://localhost:3000
 
 Then set the Convex environment variables listed in [`.env.example`](.env.example) with `npx convex env set NAME value` (or in the Convex dashboard).
 
-### Twilio setup (Yosef, first 30 minutes)
+### Twilio setup
 
-1. Get a Twilio number. On a **trial account** you can only call/text verified numbers: verify all three teammates' phones.
+1. Get a Twilio number. On a **trial account** you can only call/text verified numbers, so verify every phone you test with.
 2. In the Twilio console, set the number's **Voice** webhook to `POST https://<deployment>.convex.site/twilio/voice` and its **Messaging** webhook to `POST https://<deployment>.convex.site/twilio/sms`. (The `.convex.site` host is where Convex serves HTTP actions; `npx convex dev` prints it.)
 3. Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_NUMBER`, `SELLER_PHONE`, `XAI_API_KEY`, and optionally `CONSENT_AUDIO_URL`.
 4. If outbound texts don't arrive (A2P 10DLC carrier registration), don't fight it: `sendSms` records them as `simulated` and the dashboard still shows them.
@@ -47,8 +47,8 @@ Then set the Convex environment variables listed in [`.env.example`](.env.exampl
 ## Repo layout
 
 ```
-app/                     Next.js pages: /, /calls, /calls/[id], /messages, /admin/upload
-components/              Convex client provider
+app/                     Next.js pages: dashboard, calls, messages, bills, problems, reminders, ledger, packing
+components/              shared UI and the Convex client provider
 convex/
   schema.ts              shared schema (all money in integer cents)
   http.ts                Twilio webhooks: voice consent flow, recording callback, inbound SMS
@@ -57,32 +57,33 @@ convex/
   transcription.ts       split channels -> Grok STT -> transcriptSegments -> orders.analyzeCall
   messaging.ts           internal.messaging.sendSms + inbound SMS router (CONFIRM / DISPUTE)
   admin.ts               demo safety net: run the pipeline on an uploaded recording; test SMS
-  audit.ts               internal.audit.log (Person 3) - working minimal version
-  orders.ts              analyzeCall / confirmOrder (Person 2) - STUBS with agreed signatures
-  disputes.ts            openFromSms (Person 3) - STUB
-  billing.ts             createInvoiceForOrder (Person 3) - STUB
+  orders.ts              analyzeCall (Claude order extraction + summary text), confirmOrder, packing check
+  catalog.ts, prices.ts  product catalog, Apify reference prices, price flags
+  billing.ts, ledger.ts  invoices, payments, double-entry ledger
+  disputes.ts            disputes from texts, Claude recommendation, owner approval
+  reminders.ts, crons.ts automatic payment and confirmation reminders
+  audit.ts               internal.audit.log
   lib/twilio.ts          signature validation, TwiML, Twilio REST (SMS, recording download/delete)
   lib/stt.ts             transcribe(audio, role) -> segments; xAI Grok, OpenAI Whisper fallback
   lib/wav.ts             PCM WAV parse + channel deinterleave
   lib/phone.ts           E.164 normalization
 data/drink_catalog_seed.json   demo catalog (Coca-Cola, Dr Pepper, horchata, Celsius)
-docs/team-prompts/       the three per-person build briefs
 ```
 
 ### Shared function contracts
 
-| Function | Owner | Called by |
-|---|---|---|
-| `internal.messaging.sendSms({ to, body, relatedType?, relatedId? })` | Yosef | everyone |
-| `internal.orders.analyzeCall({ callId })` | Person 2 | Yosef after transcript is saved |
-| `internal.orders.confirmOrder({ orderId, party })` | Person 2 | Yosef SMS router on CONFIRM |
-| `internal.disputes.openFromSms({ fromPhone, body })` | Person 3 | Yosef SMS router on DISPUTE / free text |
-| `internal.billing.createInvoiceForOrder({ orderId })` | Person 3 | `confirmOrder` when both confirmed |
-| `internal.audit.log({ actor, action, entityType, entityId, reason, evidenceRefs? })` | Person 3 | everyone |
+| Function | Called by |
+|---|---|
+| `internal.messaging.sendSms({ to, body, relatedType?, relatedId? })` | any code that texts a person |
+| `internal.orders.analyzeCall({ callId })` | transcription, once transcript segments are saved |
+| `internal.orders.confirmOrder({ orderId, party })` | inbound message router on CONFIRM |
+| `internal.disputes.openFromSms({ fromPhone, body })` | inbound message router on DISPUTE / free text |
+| `internal.billing.createInvoiceForOrder({ orderId })` | `confirmOrder` when both parties confirmed |
+| `internal.audit.log({ actor, action, entityType, entityId, reason, evidenceRefs? })` | everything that acts |
 
 Demo time: always use `now = Date.now() + settings.demoClockOffsetMs` for scheduling logic.
 
-## Calls, transcription and messaging (Yosef) — design notes
+## Calls, transcription and messaging: design notes
 
 **Consent.** The buyer hears the consent message inside a `<Gather>` and must press 1 before anything else happens; if they don't, we say goodbye and hang up and no `calls` row is created. The seller is dialed with `<Number url="/twilio/seller-screen">`, so the same message plays on *their* leg before the two are bridged; pressing 1 sets `sellerConsent` and returns empty TwiML (which bridges), anything else hangs up their leg. Because `<Dial record="record-from-answer-dual">` can start recording as soon as the seller answers, the recording callback checks both consent flags and **deletes the recording at Twilio** when either is missing, so a declined call leaves no audio behind. Every consent decision is written to the audit log.
 
@@ -102,9 +103,3 @@ Demo time: always use `now = Date.now() + settings.demoClockOffsetMs` for schedu
 - **Hyphenate (autonomous finance systems).** An autonomous accounts-receivable clerk: invoices, double-entry ledger, scheduled reminders with escalation, dispute recommendations with limits, and a complete decision record.
 - **Microsoft (production-minded agent).** Consent before recording, signed webhooks, per-channel role separation, explicit failure states, audit log on every action, and an owner approval gate on money.
 - **Apify.** Daily reference retail prices for the catalog feed the price-deviation flags on agreed orders.
-
-## Team
-
-- Yosef (ymeziad) — calls, transcription, messaging (Twilio, consent, recording, Grok STT, SMS in/out)
-- Person 2 — order brain, catalog, packing check, Apify
-- Amaan Singla — money, automation, dashboard

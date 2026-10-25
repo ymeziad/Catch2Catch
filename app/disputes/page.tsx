@@ -6,7 +6,7 @@ import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { PageHeader, SectionTitle, cap, disputeHeadline, usd, when } from "@/components/money";
 
-/** OWNER: Amaan. Every problem, newest first. Each opens its own page. */
+/** Every problem, newest first. Each opens its own page. */
 export default function DisputesPage() {
   const disputes = useQuery(api.disputes.list, {});
   const open = (disputes ?? []).filter((d) => d.status === "open" || d.status === "awaiting_approval");

@@ -16,7 +16,7 @@ import { findByBarcode, loadCatalog } from "./catalog";
 import { priceFlagFor, type PriceFlag } from "./prices";
 
 /**
- * OWNER: Person 2 (Subhan). The order brain and the packing check.
+ * The order brain and the packing check.
  *
  *  - internal.orders.analyzeCall({ callId })        transcript → Claude → code checks → order + events + SMS
  *  - internal.orders.confirmOrder({ orderId, party }) CONFIRM by SMS; both parties → "confirmed" → invoice
@@ -664,7 +664,7 @@ export const loadAnalysisInput = internalQuery({
   },
 });
 
-/** Called by Yosef's transcription step once transcript segments are saved (call status "analyzing"). */
+/** Called by the transcription step once transcript segments are saved (call status "analyzing"). */
 export const analyzeCall = internalAction({
   args: { callId: v.id("calls") },
   handler: async (ctx, { callId }): Promise<null> => {
@@ -866,7 +866,7 @@ async function applyConfirmation(
   return { status: promoted ? "confirmed" : order.status, promoted };
 }
 
-/** Called by Yosef's inbound SMS router on CONFIRM. */
+/** Called by the inbound SMS router on CONFIRM. */
 export const confirmOrder = internalMutation({
   args: { orderId: v.id("orders"), party: partyV },
   handler: async (ctx, { orderId, party }) => {

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 
-/** OWNER: Amaan. Shared UI + plain shop-counter wording for the money pages. */
+/** Shared UI + plain shop-counter wording for the money pages. */
 
 export const AI = "C2C AI Assistant";
 

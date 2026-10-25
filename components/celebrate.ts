@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OWNER: Amaan. The "task done" moment: a confetti burst from both bottom corners plus a short
+ * The "task done" moment: a confetti burst from both bottom corners plus a short
  * three-note chime. No libraries. Confetti is skipped when the user asks for reduced motion.
  */
 

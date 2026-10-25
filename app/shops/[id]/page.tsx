@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { ShopView } from "@/components/ShopView";
 
-/** OWNER: Amaan. A shop's track record. */
+/** A shop's track record. */
 export default function ShopPage() {
   return (
     <Suspense fallback={<p className="text-ink/60">Loading…</p>}>

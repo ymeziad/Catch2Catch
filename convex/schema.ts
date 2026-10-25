@@ -2,7 +2,6 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Shared schema for Catch2Catch. All money in integer cents.
-// Owned by Amaan; Yosef added the indexes used by the call/SMS pipeline.
 
 const party = v.union(v.literal("buyer"), v.literal("seller"));
 
@@ -14,7 +13,7 @@ export default defineSchema({
     language: v.string(), // "en" | "es" | other
     paymentTermsDays: v.number(),
     autoApproveLimitCents: v.number(),
-    trackRecordSummary: v.optional(v.string()), // C2C AI summary of the shop's history (Amaan)
+    trackRecordSummary: v.optional(v.string()), // C2C AI summary of the shop's history
     trackRecordAt: v.optional(v.number()),
   }).index("by_phone", ["phone"]),
 
@@ -183,8 +182,8 @@ export default defineSchema({
       ),
     ),
     reasoning: v.optional(v.string()),
-    summary: v.optional(v.string()), // one plain line for the owner's to-do list (Amaan)
-    shopMessageClean: v.optional(v.string()), // the shop's latest text, rewritten in clean English, same meaning (Amaan)
+    summary: v.optional(v.string()), // one plain line for the owner's to-do list
+    shopMessageClean: v.optional(v.string()), // the shop's latest text, rewritten in clean English, same meaning
     evidenceRefs: v.array(v.object({ type: v.string(), id: v.string(), detail: v.string() })),
     amountCents: v.number(),
     status: v.union(
@@ -253,7 +252,7 @@ export default defineSchema({
       v.literal("failed"),
       v.literal("received"),
     ),
-    // Carrier delivery result reported by Twilio's status callback (Yosef).
+    // Carrier delivery result reported by Twilio's status callback.
     deliveryStatus: v.optional(v.string()), // queued | sending | sent | delivered | undelivered | failed
     deliveryError: v.optional(v.string()), // e.g. "30034: sender number not registered for A2P 10DLC"
     deliveryUpdatedAt: v.optional(v.number()),

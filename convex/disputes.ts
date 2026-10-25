@@ -9,7 +9,7 @@ import { pair, postEntryGroup } from "./ledger";
 import { cancelInvoiceReminders, latePaymentCount, scheduleInvoiceReminders } from "./reminders";
 
 /**
- * OWNER: Amaan. Disputes and refunds — the accounts-receivable clerk's judgment, with limits.
+ * Disputes and refunds — the accounts-receivable clerk's judgment, with limits.
  *
  *  1. A dispute opens from a shop's text (openFromSms) or from a short payment (openDisputeForShortPayment).
  *  2. analyzeDispute gathers evidence and asks Claude for a recommendation with reasons and evidence refs.
@@ -54,7 +54,7 @@ export async function openDisputeForShortPayment(ctx: MutationCtx, invoiceId: Id
 
 /**
  * Contract: internal.disputes.openFromSms({ fromPhone, body }).
- * Yosef's SMS router calls this on DISPUTE or any free-text reply from a shop.
+ * The inbound SMS router calls this on DISPUTE or any free-text reply from a shop.
  */
 export const openFromSms = internalMutation({
   args: { fromPhone: v.string(), body: v.string() },

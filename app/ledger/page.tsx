@@ -4,7 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { PageHeader, SectionTitle, usd, when } from "@/components/money";
 
-/** OWNER: Amaan. The books: every dollar written down twice, so it always adds up. */
+/** The books: every dollar written down twice, so it always adds up. */
 const names: Record<string, string> = { cash: "Cash", accounts_receivable: "Owed to you", sales: "Sales", sales_returns: "Taken off bills and refunds" };
 
 export default function LedgerPage() {

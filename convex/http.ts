@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import { parseForm, twiml, twilioCredsFromEnv, twilioDeleteRecording, validateTwilioSignature, xml, type TwilioParams } from "./lib/twilio";
 
 /**
- * Twilio webhooks (Yosef). Simple two-party call, no conference, no live audio streaming,
+ * Twilio webhooks. Simple two-party call, no conference, no live audio streaming,
  * and no AI anywhere in the live call path.
  *
  * Call flow:

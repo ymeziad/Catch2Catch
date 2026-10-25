@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-/** OWNER: Amaan. Top menu: page links with a mustard underline that slides to the active page. */
+/** Top menu: page links with a mustard underline that slides to the active page. */
 const links: [string, string][] = [
   ["/today", "Today"],
   ["/invoices", "Bills"],

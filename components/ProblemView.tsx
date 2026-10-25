@@ -8,7 +8,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { celebrate } from "@/components/celebrate";
 import { AI, BackButton, Checking, Oops, cleanError, sectionTitle, subTitle, disputeHeadline, recAction, recSentence, shortReason, usd, when } from "@/components/money";
 
-/** OWNER: Amaan. One problem, everything about it: the suggestion, the decision, the proof. */
+/** One problem, everything about it: the suggestion, the decision, the proof. */
 export function ProblemView() {
   const { id } = useParams<{ id: string }>();
   const disputeId = id as Id<"disputes">;

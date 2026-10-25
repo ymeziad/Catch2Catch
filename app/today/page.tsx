@@ -4,7 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { DemoTools, cap, disputeHeadline, dueText } from "@/components/money";
 
-/** OWNER: Amaan. The owner's first screen: a greeting and a plain numbered to-do list. */
+/** The owner's first screen: a greeting and a plain numbered to-do list. */
 export default function TodayPage() {
   const invoices = useQuery(api.billing.listInvoices, {});
   const disputes = useQuery(api.disputes.list, {});
