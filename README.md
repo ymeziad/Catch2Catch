@@ -107,4 +107,4 @@ Demo time: always use `now = Date.now() + settings.demoClockOffsetMs` for schedu
 
 - Person 1 — calls, transcription, messaging (Twilio, consent, recording, Grok STT, SMS in/out)
 - Person 2 — order brain, catalog, packing check, Apify
-- Person 3 — money, automation, dashboard
+- Amaan Singla — money, automation, dashboard
