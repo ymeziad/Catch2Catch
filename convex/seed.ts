@@ -17,9 +17,9 @@ import { pair, postEntryGroup } from "./ledger";
  */
 
 export const SHOPS = [
-  { key: "en", name: "Corner Market", contactName: "Dana", language: "en", phone: "+15555550101", paymentTermsDays: 14, autoApproveLimitCents: 5000 },
-  { key: "es", name: "Tienda La Esperanza", contactName: "Rosa", language: "es", phone: "+15555550102", paymentTermsDays: 14, autoApproveLimitCents: 5000 },
-  { key: "late", name: "Quick Stop Deli", contactName: "Mike", language: "en", phone: "+15555550103", paymentTermsDays: 7, autoApproveLimitCents: 5000 },
+  { key: "en", name: "Corner Market", contactName: "Dana", language: "en", phone: "+15105550147", paymentTermsDays: 14, autoApproveLimitCents: 5000 },
+  { key: "es", name: "Tienda La Esperanza", contactName: "Rosa", language: "es", phone: "+14155550182", paymentTermsDays: 14, autoApproveLimitCents: 5000 },
+  { key: "late", name: "Quick Stop Deli", contactName: "Mike", language: "en", phone: "+16505550123", paymentTermsDays: 7, autoApproveLimitCents: 5000 },
 ] as const;
 
 export const DEMO_LINES = [
@@ -75,7 +75,7 @@ type Line = { sku: string; description: string; qty: number; unit: string; unitP
 
 async function insertOrder(ctx: MutationCtx, shopId: Id<"shops">, buyerPhone: string, lines: Line[], at: number, status: "confirmed" | "verbal_agreement") {
   const callId = await ctx.db.insert("calls", {
-    twilioCallSid: `DEMO-${Math.random().toString(36).slice(2, 10)}`, buyerPhone, sellerPhone: process.env.SELLER_PHONE ?? "+15555550100", shopId,
+    twilioCallSid: `DEMO-${Math.random().toString(36).slice(2, 10)}`, buyerPhone, sellerPhone: process.env.SELLER_PHONE ?? "+15105550199", shopId,
     buyerConsent: true, sellerConsent: true, status: "done", startedAt: at - 10 * 60 * 1000, endedAt: at - 5 * 60 * 1000,
   });
   const full = lines.map((l) => ({ ...l, lineTotalCents: l.qty * l.unitPriceCents, confidence: 0.95, evidenceRole: "buyer" as const }));
@@ -246,5 +246,39 @@ export const removeTestTexts = internalMutation({
       if (a.reason.toLowerCase().includes(needle)) { await ctx.db.delete(a._id); logs++; }
     }
     return `Deleted ${disputes} problem(s), ${messages} text(s), ${logs} log line(s).`;
+  },
+});
+
+/**
+ * One-off: give the sample shops and the distributor different, realistic-looking numbers
+ * (still in the 555-01xx range kept for fiction). Updates shops, calls, texts and history lines.
+ * Run: npx convex run seed:refreshPhoneNumbers
+ */
+export const refreshPhoneNumbers = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const map: Record<string, string> = {
+      "+15555550101": "+15105550147", // Corner Market
+      "+15555550102": "+14155550182", // Tienda La Esperanza
+      "+15555550103": "+16505550123", // Quick Stop Deli
+      "+15555550100": "+15105550199", // the distributor
+    };
+    const swap = (p: string) => map[p] ?? p;
+    const swapText = (t: string) => Object.entries(map).reduce((acc, [from, to]) => acc.split(from).join(to), t);
+    let n = 0;
+    for (const s of await ctx.db.query("shops").collect()) {
+      if (map[s.phone]) { await ctx.db.patch(s._id, { phone: swap(s.phone) }); n++; }
+    }
+    for (const c of await ctx.db.query("calls").collect()) {
+      if (map[c.buyerPhone] || map[c.sellerPhone]) { await ctx.db.patch(c._id, { buyerPhone: swap(c.buyerPhone), sellerPhone: swap(c.sellerPhone) }); n++; }
+    }
+    for (const m of await ctx.db.query("messages").collect()) {
+      if (map[m.to] || map[m.from] || swapText(m.body) !== m.body) { await ctx.db.patch(m._id, { to: swap(m.to), from: swap(m.from), body: swapText(m.body) }); n++; }
+    }
+    for (const a of await ctx.db.query("auditLog").collect()) {
+      const reason = swapText(a.reason);
+      if (reason !== a.reason) { await ctx.db.patch(a._id, { reason }); n++; }
+    }
+    return `Updated ${n} records`;
   },
 });
