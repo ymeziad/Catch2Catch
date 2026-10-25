@@ -14,6 +14,7 @@ import type * as billing from "../billing.js";
 import type * as calls from "../calls.js";
 import type * as catalog from "../catalog.js";
 import type * as crons from "../crons.js";
+import type * as demoData from "../demoData.js";
 import type * as disputes from "../disputes.js";
 import type * as http from "../http.js";
 import type * as ledger from "../ledger.js";
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   calls: typeof calls;
   catalog: typeof catalog;
   crons: typeof crons;
+  demoData: typeof demoData;
   disputes: typeof disputes;
   http: typeof http;
   ledger: typeof ledger;
