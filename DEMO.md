@@ -150,7 +150,7 @@ Record the browser at https://catch2catch.vercel.app with two phones beside the 
 | 6 | **Orders** | 12 s | The order with items, prices, total, delivery and payment. Click **Confirm order**; confetti. | "One click turns the call into a confirmed order." |
 | 7 | **Bills** | 5 s | The new bill under "Not paid yet". | "Confirmed orders become bills automatically." |
 | 8 | **Packing** | 8 s | Open the order on a phone (Packing page), scan one can, take one photo. | "The warehouse scans and photographs every case, so there's proof of what shipped." |
-| 9 | **Problems** | 12 s | Open **Try it out** on Today, press **Packed short** (makes an order the warehouse packed 2 cases of Dr Pepper short), then type "missing 2 cases of Dr Pepper" and press **Send as shop**. Go to Problems, open the new problem: Claude's suggestion and its evidence (packing scan, call), then approve. | "If something goes missing, Claude checks the call and the packing and suggests a fix. The owner decides." |
+| 9 | **Problems** | 15 s | Two problems are already there. **Sunset Bodega** says 2 cases of Celsius were missing, but the packing scan shows all 8 shipped: open it, show Claude's suggestion (reject, with the scan as proof), and approve. Then show **Pupusería El Volcán**: the scan confirmed 2 cases short, so Claude credited $28 on its own (small and proven, under the shop's auto-approve limit). | "Claude checks every complaint against the call and the warehouse scan. Small, proven ones it settles itself. Anything else waits for the owner." |
 | 10 | **History** | 4 s | Scroll the audit log. | "Every step, who did it, and why." |
 | 11 | Closing card | 6 s | Maria smiling at a full counter (reuse the end of Scene 4). Text: *"Catch2Catch: every order, witnessed. So small shops can keep feeding their communities."* Team names and sponsor logos. | |
 
@@ -172,11 +172,13 @@ Expected summary: 5 cases Coca-Cola @ $14.25, 3 cases Dr Pepper @ $14.00, total 
 
 ## Before you hit record
 
-- [ ] Clear the test data from the dev deployment (old calls, "Test Shop (Yosef phone)", the 555 caller), so the dashboard starts clean.
-- [ ] Register the buyer phone as a shop named **Maria's Taquería**, so the order shows her name instead of "Who is this caller?".
+- [x] Demo storefront loaded: 7 fictional shops (Maria's Taquería on +1 628 997 6788, Corner Market, Tienda La Esperanza, Quick Stop Deli, Pupusería El Volcán, Sunset Bodega, Pho Linh Café) with a month of calls, bills, payments, a late payer and two problems. To rebuild it from scratch (back up first):
+  ```bash
+  npx convex export --path backup.zip --include-file-storage && npx convex run demoData:resetDemoData && npx convex run demoData:seedStorefront '{"livePhone":"+16289976788"}'
+  ```
 - [ ] Both phones send `join met-flower` on WhatsApp to **+1 415 523 8886** within the hour before recording (sandbox messages only reach people active in the last 24 hours).
 - [ ] `SELLER_PHONE` on the deployment is the distributor phone you're actually holding.
 - [ ] Keep the two phones in different rooms or off speaker near each other, so voices don't leak into the other track.
-- [ ] Set `APIFY_TOKEN` and press **Refresh prices** so store prices show instead of "never refreshed" (optional).
+- [x] Store prices loaded for Coca-Cola, Dr Pepper and Celsius (real Walmart listings from Subhan's Apify run). Horchata has no Walmart match. Walmart is currently returning listings without prices to scrapers, so **don't press Refresh prices during the recording**: it keeps the old prices, but it won't add new ones.
 - [ ] Browser at 125% zoom, bookmarks bar hidden, Do Not Disturb on both phones and the laptop.
 - [ ] Do one full dry run first. The summary takes about a minute after hanging up; cut that wait in editing.
