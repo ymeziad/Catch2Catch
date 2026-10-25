@@ -11,3 +11,6 @@ Convex agent skills for common tasks can be installed by running
 `npx convex ai-files install`.
 
 <!-- convex-ai-end -->
+
+## Team context
+I am Person 2. My responsibilities, schema, function contracts and rules are in docs/person2.md. Read it before writing code, and only edit the files I own (convex/orders.ts, convex/catalog.ts, convex/prices.ts, app/pack/). Never edit convex/schema.ts; ask Person 3 for schema changes.
