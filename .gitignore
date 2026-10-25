@@ -42,3 +42,5 @@ next-env.d.ts
 
 # convex
 .env.local
+evals/live/results/
+evals/live/results/

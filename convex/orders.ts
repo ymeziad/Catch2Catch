@@ -142,8 +142,14 @@ How to fill the output:
 
 // =================================================================== pure helpers (also used by the eval)
 
+/** Short order number for SMS and screens. Convex IDs share a table-specific tail, so hash the whole ID (FNV-1a). */
 export function orderRef(orderId: string): string {
-  return orderId.slice(-6).toUpperCase();
+  let h = 0x811c9dc5;
+  for (let i = 0; i < orderId.length; i++) {
+    h ^= orderId.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36).toUpperCase().padStart(6, "0").slice(-6);
 }
 
 function mmss(ms: number): string {
@@ -408,7 +414,9 @@ export function buildOrder(analysis: ModelAnalysis, segments: Segment[], catalog
     if (flag) priceFlags.push(flag);
   }
 
-  const allPriced = lines.length > 0 && lines.every((l) => l.lineTotalCents !== undefined);
+  // Totals only for an order both sides agreed to: a needs_review line can carry a placeholder quantity.
+  if (status !== "verbal_agreement") for (const l of lines) l.lineTotalCents = undefined;
+  const allPriced = status === "verbal_agreement" && lines.length > 0 && lines.every((l) => l.lineTotalCents !== undefined);
   const events: BuiltEvent[] = analysis.events.map((e) => ({
     field: e.field,
     value: e.value,
@@ -471,9 +479,18 @@ function clip(s: string, n: number): string {
   return s.length <= n ? s : s.slice(0, n - 1).trimEnd() + "…";
 }
 
-/** First few issues as one clause list ("A; B; C"), without their own trailing periods. */
-function issueList(issues: string[], max: number): string {
-  return issues.slice(0, max).map((s) => clip(s.trim().replace(/[.\s]+$/, ""), 90)).join("; ");
+/** First few whole issues as one clause list ("A; B; C") within a length budget, without their own trailing periods. */
+function issueList(issues: string[], max: number, budget = 240): string {
+  const out: string[] = [];
+  let used = 0;
+  for (const raw of issues.slice(0, max)) {
+    const s = raw.trim().replace(/[.\s]+$/, "");
+    if (!s) continue;
+    if (out.length > 0 && used + s.length + 2 > budget) break;
+    out.push(out.length === 0 ? clip(s, budget).replace(/…$/, "") : s);
+    used += s.length + 2;
+  }
+  return out.join("; ");
 }
 
 function composeOne(lang: Lang, ref: string, order: BuiltOrder, names: Map<string, string>): string {
