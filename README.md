@@ -9,7 +9,7 @@ Orders between small distributors and small shops are agreed by phone, fast, and
 1. A buyer calls the distributor's Twilio number. A consent message plays; the buyer presses 1. The distributor rep is dialed, hears the same message, presses 1. **Only then** are they connected and recorded, dual-channel (buyer and seller on separate tracks). No AI speaks on the call and nothing adds delay.
 2. Call ends → recording → speech-to-text per channel (xAI Grok) → transcript segments with role (buyer/seller) and timestamps.
 3. Claude analyzes the transcript: `verbal_agreement` | `no_agreement` | `needs_review`, order lines matched to catalog SKUs, negotiation history, open issues. It never invents a number.
-4. Both parties get the identical SMS summary and reply **CONFIRM** or **DISPUTE**.
+4. Both parties get the identical order summary on WhatsApp. It is informational; the owner confirms or corrects the order on the dashboard's Orders page.
 5. Both confirm → invoice + ledger entries; payment reminders start.
 6. The warehouse packer scans each barcode and photographs the box. Mismatches block "ready to ship" until fixed or the owner overrides. Scans and photos are kept as evidence.
 7. A short payment or a dispute text opens a dispute. Claude compares order, transcript, packing evidence, payment and shop history and recommends credit / refund / replacement / reject-with-evidence / escalate. **The owner approves; the agent never approves its own recommendation.**

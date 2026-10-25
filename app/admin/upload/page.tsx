@@ -17,7 +17,7 @@ export default function UploadPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [smsTo, setSmsTo] = useState("");
-  const [smsBody, setSmsBody] = useState("Catch2Catch test: reply CONFIRM or DISPUTE.");
+  const [smsBody, setSmsBody] = useState("Catch2Catch test message.");
   const [smsResult, setSmsResult] = useState<string | null>(null);
 
   async function onRun() {

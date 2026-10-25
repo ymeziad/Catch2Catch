@@ -4,8 +4,8 @@ const steps = [
   ["Buyer calls the Twilio number", "Consent prompt plays. Buyer presses 1."],
   ["Distributor is dialed", "Hears the same prompt, presses 1. Only then are they bridged and recorded (dual-channel)."],
   ["Call ends", "Recording stored → Grok speech-to-text per channel → transcript segments with buyer/seller roles."],
-  ["Claude analyzes", "Order lines, status, open issues. Both parties get the identical SMS summary."],
-  ["Reply CONFIRM or DISPUTE", "CONFIRM confirms the order; DISPUTE or free text opens a dispute for the owner."],
+  ["Claude analyzes", "Order lines, status, open issues. Buyer and distributor both get the same WhatsApp summary."],
+  ["Confirm on the dashboard", "The owner checks the order on the Orders page and confirms it; a confirmed order becomes a bill."],
 ];
 
 export default function Home() {
@@ -15,7 +15,7 @@ export default function Home() {
         <h1 className="text-3xl font-semibold tracking-tight">Catch2Catch</h1>
         <p className="mt-2 text-zinc-600 max-w-2xl">
           An AI order witness for small drink distributors and the shops they supply. Phone orders are recorded
-          with consent, transcribed per speaker, summarized, confirmed by text, and backed by evidence when
+          with consent, transcribed per speaker, summarized for both sides on WhatsApp, confirmed on the dashboard, and backed by evidence when
           something ships short.
         </p>
       </section>

@@ -6,6 +6,16 @@ import { normalizePhone, samePhone } from "./lib/phone";
 import { messageChannelFromEnv, twilioCredsFromEnv, twilioSendSms } from "./lib/twilio";
 
 export const MAX_SMS_CHARS = 600;
+
+/**
+ * Which messages actually go to people's phones. By default only the post-call order summary
+ * (relatedType "order") and manual test messages do; invoices, reminders and dispute notes are
+ * recorded on the dashboard instead. Set PHONE_MESSAGES=all to send everything.
+ */
+function goesToPhone(relatedType: string | undefined): boolean {
+  if ((process.env.PHONE_MESSAGES ?? "summaries").toLowerCase() === "all") return true;
+  return relatedType === "order" || relatedType === "test";
+}
 const UNKNOWN_SENDER_REPLY = "We couldn't find an order for this number.";
 const NO_PENDING_REPLY = "Thanks — there is no order waiting for your confirmation right now.";
 
@@ -29,7 +39,8 @@ export const sendSms = internalAction({
     const body = args.body.length > MAX_SMS_CHARS ? args.body.slice(0, MAX_SMS_CHARS - 1) + "…" : args.body;
     const creds = twilioCredsFromEnv();
     const sender = messageChannelFromEnv();
-    const simulate = process.env.SMS_SIMULATE === "1" || !creds || !sender;
+    const dashboardOnly = !goesToPhone(args.relatedType);
+    const simulate = process.env.SMS_SIMULATE === "1" || !creds || !sender || dashboardOnly;
 
     let status: "sent" | "simulated" | "failed" = "simulated";
     let twilioSid: string | undefined;
@@ -45,7 +56,9 @@ export const sendSms = internalAction({
         console.warn(`[sms] send failed, marking simulated: ${note}`);
       }
     } else {
-      note = creds ? "SMS_SIMULATE=1" : "Twilio credentials not configured";
+      note = dashboardOnly
+        ? "dashboard only: just the call summary goes to phones"
+        : creds ? "SMS_SIMULATE=1" : "Twilio credentials not configured";
     }
 
     const messageId = await ctx.runMutation(internal.messaging.recordMessage, {
@@ -58,7 +71,7 @@ export const sendSms = internalAction({
       twilioSid,
       status,
       channel: sender?.channel,
-      deliveryStatus: twilioSid ? "queued" : undefined,
+      deliveryStatus: twilioSid ? "queued" : dashboardOnly ? "dashboard_only" : undefined,
     });
     await ctx.runMutation(internal.audit.log, {
       actor: "agent",

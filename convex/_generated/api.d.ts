@@ -25,6 +25,7 @@ import type * as lib_wav from "../lib/wav.js";
 import type * as messages from "../messages.js";
 import type * as messaging from "../messaging.js";
 import type * as moderation from "../moderation.js";
+import type * as orderDesk from "../orderDesk.js";
 import type * as orders from "../orders.js";
 import type * as prices from "../prices.js";
 import type * as recordings from "../recordings.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   messages: typeof messages;
   messaging: typeof messaging;
   moderation: typeof moderation;
+  orderDesk: typeof orderDesk;
   orders: typeof orders;
   prices: typeof prices;
   recordings: typeof recordings;

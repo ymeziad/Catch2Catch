@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 /** Top menu: page links with a mustard underline that slides to the active page. */
 const links: [string, string][] = [
   ["/today", "Today"],
+  ["/orders", "Orders"],
   ["/invoices", "Bills"],
   ["/disputes", "Problems"],
   ["/reminders", "Reminders"],

@@ -432,20 +432,22 @@ export function buildOrder(analysis: ModelAnalysis, segments: Segment[], catalog
   };
 }
 
-// ------------------------------------------------------------------- SMS summary
+// ------------------------------------------------------------------- summary message
+// One informational message to buyer and seller after the call. Confirming or changing the order
+// happens on the dashboard, so the message never asks for a reply.
 
 type Lang = "en" | "es";
 
 const TEXT = {
   en: {
     unit: (qty: number, unit: string) => (unit === "case" ? (qty === 1 ? "case" : "cases") : unit),
-    notDiscussed: "not discussed",
+    notDiscussed: "not settled",
     agreed: (ref: string, lines: string, total: string, delivery: string, payment: string) =>
-      `Order #${ref}. You verbally agreed: ${lines}. Total ${total}. Delivery ${delivery}. Payment ${payment}. Reply CONFIRM to accept or DISPUTE to correct.`,
+      `Order #${ref}. You verbally agreed: ${lines}. Total ${total}. Delivery ${delivery}. Payment ${payment}.`,
     noAgreement: (ref: string, discussed: string, buyer: string, seller: string, unresolved: string) =>
       `Order #${ref}: No agreement was confirmed. Discussed: ${discussed}. Buyer asked: ${buyer}. Seller offered: ${seller}. Unresolved: ${unresolved}.`,
     review: (ref: string, issues: string) =>
-      `Order #${ref}: We couldn't confirm all details from the call. Please check: ${issues}. Reply with corrections.`,
+      `Order #${ref}: We couldn't confirm all details from the call. To check: ${issues}.`,
     nothing: "nothing specific",
     none: "none",
     unknownTotal: "not set",
@@ -454,11 +456,11 @@ const TEXT = {
     unit: (qty: number, unit: string) => (unit === "case" ? (qty === 1 ? "caja" : "cajas") : unit),
     notDiscussed: "no se habló",
     agreed: (ref: string, lines: string, total: string, delivery: string, payment: string) =>
-      `Pedido #${ref}. Acordaron verbalmente: ${lines}. Total ${total}. Entrega: ${delivery}. Pago: ${payment}. Responda CONFIRM (o SI) para aceptar o DISPUTE para corregir.`,
+      `Pedido #${ref}. Acordaron verbalmente: ${lines}. Total ${total}. Entrega: ${delivery}. Pago: ${payment}.`,
     noAgreement: (ref: string, discussed: string, buyer: string, seller: string, unresolved: string) =>
       `Pedido #${ref}: No se confirmó ningún acuerdo. Se habló de: ${discussed}. El comprador pidió: ${buyer}. El vendedor ofreció: ${seller}. Sin resolver: ${unresolved}.`,
     review: (ref: string, issues: string) =>
-      `Pedido #${ref}: No pudimos confirmar todos los detalles de la llamada. Revise: ${issues}. Responda con las correcciones.`,
+      `Pedido #${ref}: No pudimos confirmar todos los detalles de la llamada. Por revisar: ${issues}.`,
     nothing: "nada concreto",
     none: "nada",
     unknownTotal: "sin definir",

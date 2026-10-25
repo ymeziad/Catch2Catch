@@ -13,6 +13,7 @@ const statusColor: Record<string, string> = {
 // What the carrier actually did with an outbound text (from Twilio's delivery callback).
 function deliveryLabel(status?: string): { text: string; cls: string } | null {
   if (!status) return null;
+  if (status === "dashboard_only") return { text: "dashboard only, not sent to a phone", cls: "text-zinc-500" };
   if (status === "delivered" || status === "read") return { text: "delivered to phone", cls: "text-green-700" };
   if (status === "undelivered" || status === "failed" || status === "canceled") return { text: "not delivered", cls: "text-red-700" };
   return { text: `in transit (${status})`, cls: "text-zinc-500" };
