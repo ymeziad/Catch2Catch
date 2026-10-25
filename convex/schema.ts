@@ -253,6 +253,10 @@ export default defineSchema({
       v.literal("failed"),
       v.literal("received"),
     ),
+    // Carrier delivery result reported by Twilio's status callback (Yosef).
+    deliveryStatus: v.optional(v.string()), // queued | sending | sent | delivered | undelivered | failed
+    deliveryError: v.optional(v.string()), // e.g. "30034: sender number not registered for A2P 10DLC"
+    deliveryUpdatedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_createdAt", ["createdAt"])

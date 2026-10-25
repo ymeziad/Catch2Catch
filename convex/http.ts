@@ -18,6 +18,7 @@ import { parseForm, twiml, twilioCredsFromEnv, twilioDeleteRecording, validateTw
  *     -> POST /twilio/recording       RecordingStatus=completed: if both consented, schedule recordings.ingest;
  *                                     otherwise DELETE the recording at Twilio so nothing is kept.
  *   SMS: POST /twilio/sms             insert messages row, schedule messaging.routeInbound
+ *        POST /twilio/sms-status      carrier delivery updates for outbound texts
  *
  * Twilio dual-channel: channel 1 = inbound caller (buyer), channel 2 = dialed party (seller).
  */
@@ -241,6 +242,25 @@ http.route({
     await ctx.scheduler.runAfter(0, internal.messaging.routeInbound, { fromPhone: from, body, messageId });
     // Empty TwiML: replies (if any) go out through sendSms so they are logged in `messages`.
     return twiml("");
+  }),
+});
+
+// Delivery updates for outbound texts (StatusCallback set by messaging.sendSms).
+http.route({
+  path: "/twilio/sms-status",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const g = await guard(request);
+    if ("reject" in g) return g.reject;
+    const { params } = g;
+    if (params.MessageSid && params.MessageStatus) {
+      await ctx.runMutation(internal.messaging.applyDeliveryStatus, {
+        twilioSid: params.MessageSid,
+        deliveryStatus: params.MessageStatus,
+        errorCode: params.ErrorCode || undefined,
+      });
+    }
+    return new Response("", { status: 204 });
   }),
 });
 

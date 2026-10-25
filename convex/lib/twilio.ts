@@ -113,9 +113,12 @@ export async function twilioSendSms(
   creds: TwilioCreds,
   to: string,
   body: string,
+  statusCallback?: string,
 ): Promise<{ sid: string; status: string }> {
   const url = `https://api.twilio.com/2010-04-01/Accounts/${creds.accountSid}/Messages.json`;
   const form = new URLSearchParams({ To: to, From: creds.fromNumber, Body: body });
+  // Twilio POSTs each delivery update (sent, delivered, undelivered, failed) here.
+  if (statusCallback) form.set("StatusCallback", statusCallback);
   const res = await fetch(url, {
     method: "POST",
     headers: {

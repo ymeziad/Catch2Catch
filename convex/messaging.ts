@@ -34,7 +34,7 @@ export const sendSms = internalAction({
     let note = "";
     if (!simulate && creds) {
       try {
-        const r = await twilioSendSms(creds, to, body);
+        const r = await twilioSendSms(creds, to, body, smsStatusCallbackUrl());
         twilioSid = r.sid;
         status = "sent";
       } catch (e) {
@@ -55,6 +55,7 @@ export const sendSms = internalAction({
       relatedId: args.relatedId,
       twilioSid,
       status,
+      deliveryStatus: twilioSid ? "queued" : undefined,
     });
     await ctx.runMutation(internal.audit.log, {
       actor: "agent",
@@ -78,6 +79,7 @@ export const recordMessage = internalMutation({
     relatedId: v.optional(v.string()),
     twilioSid: v.optional(v.string()),
     status: v.union(v.literal("sent"), v.literal("simulated"), v.literal("failed"), v.literal("received")),
+    deliveryStatus: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     if (args.twilioSid) {
@@ -85,6 +87,76 @@ export const recordMessage = internalMutation({
       if (dup) return dup._id; // Twilio retries webhooks; keep one row per MessageSid
     }
     return await ctx.db.insert("messages", { ...args, createdAt: Date.now() });
+  },
+});
+
+// --------------------------------------------------------------------------- delivery status
+
+/** Where Twilio reports delivery updates. Convex sets CONVEX_SITE_URL for every deployment. */
+function smsStatusCallbackUrl(): string | undefined {
+  const base = process.env.TWILIO_WEBHOOK_BASE_URL ?? process.env.CONVEX_SITE_URL;
+  return base ? `${base.replace(/\/$/, "")}/twilio/sms-status` : undefined;
+}
+
+// Twilio can deliver callbacks out of order; never let an earlier stage overwrite a later one.
+const DELIVERY_RANK: Record<string, number> = {
+  accepted: 1, scheduled: 1, queued: 1, sending: 2, sent: 3,
+  delivered: 4, read: 4, undelivered: 4, failed: 4, canceled: 4,
+};
+const NOT_DELIVERED = new Set(["undelivered", "failed", "canceled"]);
+
+const ERROR_TEXT: Record<string, string> = {
+  "30034": "sender number not registered for A2P 10DLC",
+  "30007": "filtered by the carrier",
+  "30003": "phone unreachable",
+  "30005": "unknown or inactive number",
+  "30006": "landline or unreachable carrier",
+  "30008": "unknown carrier error",
+  "21610": "recipient replied STOP",
+};
+
+/**
+ * Apply a Twilio delivery update to the matching `messages` row.
+ * Blocked or failed texts become status "simulated" (the shared contract: if SMS is blocked the
+ * dashboard still shows the message), with the carrier's reason in deliveryError.
+ * The callback can beat sendSms's insert by a moment, so retry briefly if the row isn't there yet.
+ */
+export const applyDeliveryStatus = internalMutation({
+  args: { twilioSid: v.string(), deliveryStatus: v.string(), errorCode: v.optional(v.string()), attempt: v.optional(v.number()) },
+  handler: async (ctx, { twilioSid, deliveryStatus, errorCode, attempt }) => {
+    const msg = await ctx.db.query("messages").withIndex("by_twilioSid", (q) => q.eq("twilioSid", twilioSid)).first();
+    if (!msg) {
+      if ((attempt ?? 0) < 5) {
+        await ctx.scheduler.runAfter(2000, internal.messaging.applyDeliveryStatus, {
+          twilioSid, deliveryStatus, errorCode, attempt: (attempt ?? 0) + 1,
+        });
+      }
+      return;
+    }
+    const next = deliveryStatus.toLowerCase();
+    const prev = msg.deliveryStatus ?? "queued";
+    if ((DELIVERY_RANK[next] ?? 0) < (DELIVERY_RANK[prev] ?? 0)) return;
+    if (DELIVERY_RANK[prev] === 4) return; // already final
+
+    const failed = NOT_DELIVERED.has(next);
+    const deliveryError = failed && errorCode ? `${errorCode}: ${ERROR_TEXT[errorCode] ?? "see Twilio error docs"}` : undefined;
+    await ctx.db.patch(msg._id, {
+      deliveryStatus: next,
+      deliveryError,
+      deliveryUpdatedAt: Date.now(),
+      ...(failed ? { status: "simulated" as const } : {}),
+    });
+    if (failed) {
+      await ctx.db.insert("auditLog", {
+        actor: "system",
+        action: "sms_not_delivered",
+        entityType: msg.relatedType ?? "message",
+        entityId: msg.relatedId ?? msg._id,
+        reason: `Text to ${msg.to} was ${next} by the carrier${deliveryError ? ` (${deliveryError})` : ""}; kept on the dashboard as simulated`,
+        evidenceRefs: [{ type: "message", id: msg._id, detail: msg.body.slice(0, 120) }],
+        at: Date.now(),
+      });
+    }
   },
 });
 
