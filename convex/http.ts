@@ -195,7 +195,7 @@ http.route({
     const g = await guard(request);
     if ("reject" in g) return g.reject;
     const { params } = g;
-    if (params.RecordingStatus !== "completed") return new Response("", { status: 204 });
+    if (params.RecordingStatus !== "completed") return new Response(null, { status: 204 });
 
     const callSid = params.CallSid ?? "";
     const recordingSid = params.RecordingSid ?? "";
@@ -213,11 +213,14 @@ http.route({
       if (call && call.status === "in_progress") {
         await ctx.runMutation(internal.calls.setStatus, { callId: call._id, status: "failed", error: "recording discarded: seller consent missing", endedAt: Date.now() });
       }
-      return new Response("", { status: 204 });
+      return new Response(null, { status: 204 });
     }
 
-    await ctx.scheduler.runAfter(0, internal.recordings.ingest, { callId: call._id, recordingSid, recordingUrl });
-    return new Response("", { status: 204 });
+    const claimed = await ctx.runMutation(internal.calls.claimRecording, { callId: call._id, recordingSid });
+    if (claimed) {
+      await ctx.scheduler.runAfter(0, internal.recordings.ingest, { callId: call._id, recordingSid, recordingUrl });
+    }
+    return new Response(null, { status: 204 });
   }),
 });
 
@@ -269,7 +272,7 @@ http.route({
         errorCode: params.ErrorCode || undefined,
       });
     }
-    return new Response("", { status: 204 });
+    return new Response(null, { status: 204 });
   }),
 });
 

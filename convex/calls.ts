@@ -89,6 +89,20 @@ export const setSellerConsent = internalMutation({
   },
 });
 
+/**
+ * Twilio can deliver the same recording callback more than once. The first delivery claims the
+ * recording for this call; later deliveries of the same RecordingSid return false and are ignored.
+ */
+export const claimRecording = internalMutation({
+  args: { callId: v.id("calls"), recordingSid: v.string() },
+  handler: async (ctx, { callId, recordingSid }) => {
+    const call = await ctx.db.get(callId);
+    if (!call || call.recordingSid === recordingSid) return false;
+    await ctx.db.patch(callId, { recordingSid });
+    return true;
+  },
+});
+
 export const markRecorded = internalMutation({
   args: { callId: v.id("calls"), recordingSid: v.string(), recordingFileId: v.id("_storage") },
   handler: async (ctx, { callId, recordingSid, recordingFileId }) => {
