@@ -6,7 +6,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { DAY, HOUR, demoNow, nextMorning9amPT, ownerPhone, shortDate, shortId, usd } from "./lib/clock";
 
 /**
- * OWNER: Person 3. Automatic reminders, driven by a cron every minute (convex/crons.ts).
+ * OWNER: Amaan. Automatic reminders, driven by a cron every minute (convex/crons.ts).
  *
  * Invoice schedule:  payment_due_soon (due - 2d) · payment_due (due) · payment_late (due + 3d) · escalate_owner (due + 7d)
  * Memory over time:  a shop that paid late 2+ times in the last 90 days skips "due soon" and escalates at due + 3d.

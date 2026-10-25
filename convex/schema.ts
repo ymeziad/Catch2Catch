@@ -2,7 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Shared schema for Catch2Catch. All money in integer cents.
-// Owned by Person 3; Yosef added the indexes used by the call/SMS pipeline.
+// Owned by Amaan; Yosef added the indexes used by the call/SMS pipeline.
 
 const party = v.union(v.literal("buyer"), v.literal("seller"));
 

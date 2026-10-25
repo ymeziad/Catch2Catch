@@ -9,7 +9,7 @@ import { pair, postEntryGroup } from "./ledger";
 import { cancelInvoiceReminders, latePaymentCount, scheduleInvoiceReminders } from "./reminders";
 
 /**
- * OWNER: Person 3. Disputes and refunds — the accounts-receivable clerk's judgment, with limits.
+ * OWNER: Amaan. Disputes and refunds — the accounts-receivable clerk's judgment, with limits.
  *
  *  1. A dispute opens from a shop's text (openFromSms) or from a short payment (openDisputeForShortPayment).
  *  2. analyzeDispute gathers evidence and asks Claude for a recommendation with reasons and evidence refs.
@@ -173,7 +173,7 @@ Rules:
 - A short payment with no message and no packing mismatch: escalate (ask the owner to call), do not guess.
 - When sources disagree, name both sources and what each says.
 - Never invent a number. amountCents must be computed from prices in the order lines (qty × unitPriceCents) or the invoice/payments. Use 0 for reject_with_evidence and escalate.
-- claimedItems: what the shop says is wrong, using order SKUs. Empty if the shop gave no details.
+- claimedItems: what the shop says is wrong, using order SKUs. If the shop sent no details but paid short and the evidence (e.g. a packing mismatch) explains the gap exactly, list those items with reason "inferred from short payment and packing mismatch". Otherwise empty.
 - reasoning: 3 to 5 plain sentences a busy owner can read in 10 seconds.
 - evidenceRefs: point to the exact records (type = packing_check | transcript_segment | order | order_event | payment | invoice | dispute | photo) with ids from the evidence and a short detail.
 When unsure, escalate.`;
@@ -212,8 +212,8 @@ async function askClaude(e: Evidence, apiKey: string): Promise<Analysis> {
       max_tokens: 1500,
       system: SYSTEM_PROMPT,
       tools: [TOOL],
-      tool_choice: { type: "tool", name: TOOL.name },
-      messages: [{ role: "user", content: `Evidence (JSON):\n${JSON.stringify(evidenceForModel(e))}` }],
+      tool_choice: { type: "auto" },
+      messages: [{ role: "user", content: `Evidence (JSON):\n${JSON.stringify(evidenceForModel(e))}\n\nRespond only by calling the record_recommendation tool.` }],
     }),
   });
   if (!res.ok) throw new Error(`Claude API ${res.status}: ${(await res.text()).slice(0, 300)}`);
@@ -312,7 +312,8 @@ export const applyAnalysis = internalMutation({
     let amount = Math.max(0, Math.round(Number.isFinite(a.amountCents) ? a.amountCents : 0));
     if (rec === "reject_with_evidence" || rec === "escalate") amount = 0;
     const claimedValue = claimedItems.reduce((s, c) => s + (order.lines.find((l) => l.sku === c.sku)?.unitPriceCents ?? 0) * c.qty, 0);
-    const cap = Math.min(inv.amountCents, claimedValue > 0 ? claimedValue : d.requestedBy === "agent" ? d.amountCents : inv.amountCents);
+    const openOrTotal = inv.balanceCents > 0 ? inv.balanceCents : inv.amountCents;
+    const cap = Math.min(inv.amountCents, claimedValue > 0 ? claimedValue : openOrTotal);
     if (amount > cap) { notes.push(`amount capped from ${usd(amount)} to ${usd(cap)} (value of claimed goods / invoice)`); amount = cap; }
     if (rec === "credit" && amount > inv.balanceCents) { notes.push(`credit capped at the open balance ${usd(inv.balanceCents)}`); amount = inv.balanceCents; }
     const paid = (await ctx.db.query("payments").withIndex("by_invoiceId", (q) => q.eq("invoiceId", inv._id)).collect()).reduce((s, p) => s + p.amountCents, 0);

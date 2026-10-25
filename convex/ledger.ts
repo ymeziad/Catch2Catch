@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 
 /**
- * OWNER: Person 3. Double-entry ledger. The books must always balance.
+ * OWNER: Amaan. Double-entry ledger. The books must always balance.
  *
  *   Invoice issued         Dr accounts_receivable   Cr sales
  *   Payment received       Dr cash                  Cr accounts_receivable
@@ -100,6 +100,8 @@ export const journal = query({
       }
       g.lines.push(r);
     }
-    return [...groups.values()].slice(0, limit ?? 60);
+    const out = [...groups.values()].slice(0, limit ?? 60);
+    for (const g of out) g.lines.sort((a, b) => b.debitCents - a.debitCents);
+    return out;
   },
 });

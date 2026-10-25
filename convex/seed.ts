@@ -8,7 +8,7 @@ import { normalizePhone } from "./lib/phone";
 import { pair, postEntryGroup } from "./ledger";
 
 /**
- * OWNER: Person 3. Synthetic demo data only — no real customers. 555-01xx numbers are reserved for fiction.
+ * OWNER: Amaan. Synthetic demo data only — no real customers. 555-01xx numbers are reserved for fiction.
  *
  *   npx convex run seed:seedDemo                       # settings row + 3 shops (+ history for the late payer)
  *   npx convex run seed:setShopPhone '{"name":"Corner Market","phone":"+1..."}'   # point a shop at a real test phone

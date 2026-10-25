@@ -2,7 +2,7 @@ import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
- * OWNER: Person 3. Minimal working implementation so everyone can log from day one.
+ * OWNER: Amaan. Minimal working implementation so everyone can log from day one.
  * Contract: internal.audit.log({ actor, action, entityType, entityId, reason, evidenceRefs? })
  */
 export const log = internalMutation({

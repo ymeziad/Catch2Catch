@@ -1,6 +1,6 @@
 import type { QueryCtx } from "../_generated/server";
 
-/** OWNER: Person 3. Demo clock + money formatting helpers shared by billing, reminders and disputes. */
+/** OWNER: Amaan. Demo clock + money formatting helpers shared by billing, reminders and disputes. */
 
 export const MINUTE = 60 * 1000;
 export const HOUR = 60 * MINUTE;

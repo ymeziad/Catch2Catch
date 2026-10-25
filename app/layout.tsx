@@ -21,6 +21,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav className="mx-auto max-w-5xl flex items-center gap-6 px-4 h-14 text-sm">
               <Link href="/" className="font-semibold">Catch2Catch</Link>
               <Link href="/calls" className="hover:underline">Calls</Link>
+              <Link href="/invoices" className="hover:underline">Invoices</Link>
+              <Link href="/disputes" className="hover:underline">Disputes</Link>
+              <Link href="/reminders" className="hover:underline">Reminders</Link>
+              <Link href="/ledger" className="hover:underline">Ledger</Link>
+              <Link href="/audit" className="hover:underline">Audit</Link>
               <Link href="/messages" className="hover:underline">Messages</Link>
               <Link href="/admin/upload" className="hover:underline">Upload recording</Link>
             </nav>
