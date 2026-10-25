@@ -91,6 +91,8 @@ export default defineSchema({
         evidenceRole: v.optional(party),
       }),
     ),
+    // Products asked for that the distributor doesn't carry; shown as "currently not available".
+    unavailableItems: v.optional(v.array(v.object({ description: v.string(), qty: v.number(), unit: v.string() }))),
     deliveryDate: v.optional(v.string()),
     paymentTerms: v.optional(v.string()),
     openIssues: v.array(v.string()),

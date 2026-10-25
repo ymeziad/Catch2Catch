@@ -115,8 +115,15 @@ function OrderRow({ row, shops, onError }: { row: Row; shops: ShopOption[]; onEr
         </ul>
       )}
 
+      {(order.unavailableItems ?? []).length > 0 && (
+        <div className="text-base text-ink/60">
+          Currently not available:{" "}
+          {(order.unavailableItems ?? []).map((u) => (u.qty > 0 ? `${u.qty} ${u.unit === "case" ? (u.qty === 1 ? "case" : "cases") : u.unit} ${u.description}` : u.description)).join(", ")}
+        </div>
+      )}
+
       <div className="text-base text-ink/60">
-        Delivery: {order.deliveryDate ?? "not settled"} · Payment: {order.paymentTerms ?? "not settled"}
+        Delivery: {order.deliveryDate ?? "not discussed"} · Payment: {order.paymentTerms ?? "not discussed"}
       </div>
 
       {order.openIssues.length > 0 && (
