@@ -36,8 +36,8 @@ export default function TodayPage() {
   const part = hour >= 5 && hour < 12 ? 0 : hour >= 12 && hour < 17 ? 1 : 2;
   const hi = es ? ["Buenos días", "Buenas tardes", "Buenas noches"][part] : ["Good morning", "Good afternoon", "Good evening"][part];
   const g = es
-    ? { before: n === 0 ? "Hoy no tiene" : "Hoy tiene", word: n === 0 ? "nada" : `${n} ${n === 1 ? "cosa" : "cosas"}`, after: n === 0 ? "pendiente." : n === 1 ? "pendiente." : "pendientes." }
-    : { before: "You have", word: n === 0 ? "nothing" : `${n} ${n === 1 ? "thing" : "things"}`, after: "to take care of today." };
+    ? { before: n === 0 ? "No tiene" : "Tiene", word: n === 0 ? "tareas" : `${n} ${n === 1 ? "tarea" : "tareas"}`, after: n === 1 ? "pendiente." : "pendientes." }
+    : { before: "You have", word: n === 0 ? "no tasks" : `${n} ${n === 1 ? "task" : "tasks"}`, after: "pending." };
 
   const owed = (invoices ?? []).reduce((s, i) => s + i.balanceCents, 0);
   const late = (invoices ?? []).filter((i) => i.overdue).reduce((s, i) => s + i.balanceCents, 0);
