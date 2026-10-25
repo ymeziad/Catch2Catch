@@ -135,4 +135,37 @@ export const ES: Record<string, string> = {
   "Ready to ship": "Listo para enviar", "Not packed yet": "Sin empacar", "No orders waiting to be packed.": "No hay pedidos esperando empaque.",
   "Open an order on your phone, scan every case, take a photo of each item, and check the box.": "Abra un pedido en su teléfono, escanee cada caja, tome una foto de cada producto y revise la caja.",
   "1 item": "1 producto", "{n} items": "{n} productos",
+
+  // orders
+  "What the C2C AI Assistant took from each call. The buyer and the distributor both got this summary on WhatsApp.": "Lo que el C2C AI Assistant tomó de cada llamada. El comprador y el distribuidor recibieron este resumen por WhatsApp.",
+  "Waiting for you": "Esperándolo a usted", "Nothing to confirm.": "Nada que confirmar.", "Confirmed": "Confirmados", "No deal": "Sin acuerdo",
+  "agreed on the call": "acordado en la llamada", "needs a look": "hay que revisarlo", "no deal": "sin acuerdo", "confirmed": "confirmado", "cancelled": "cancelado",
+  "Market prices": "Precios de tienda", "Store prices from Walmart, for comparing what was agreed on a call. They never change an order.": "Precios de Walmart, para comparar con lo acordado en una llamada. Nunca cambian un pedido.",
+  "Updated {date}.": "Actualizado el {date}.", "Not loaded yet.": "Todavía no se han cargado.", "{n} per case": "{n} por caja", "{amount} per case": "{amount} por caja",
+  "no price yet": "sin precio todavía", "listing": "ver producto", "Getting prices…": "Buscando precios…", "Refresh market prices": "Actualizar precios",
+  "Unknown caller {phone}": "Número desconocido {phone}", "No total yet": "Sin total todavía", "case": "caja", "cases": "cajas",
+  "(quantity not stated)": "(no dijeron la cantidad)", "at {amount}": "a {amount}", "store price {amount}/case": "precio de tienda {amount}/caja",
+  "Currently not available:": "No disponible por ahora:", "Delivery:": "Entrega:", "Payment:": "Pago:", "not discussed": "no se habló",
+  "net terms": "a crédito", "cash on delivery": "pago al entregar", "Confirm order": "Confirmar pedido", "Buyer confirmed": "El comprador confirmó",
+  "Distributor confirmed": "El distribuidor confirmó", "Check the points above against the call before treating this as an order.": "Revise los puntos de arriba con la llamada antes de tomarlo como pedido.",
+  "See the bill": "Ver la factura", "Hear the call and read the transcript": "Escuchar la llamada y leer lo que se dijo",
+  "Buyer ✓": "Comprador ✓", "Buyer not yet": "Comprador todavía no", "Distributor ✓": "Distribuidor ✓", "Distributor not yet": "Distribuidor todavía no",
+  "Attach this caller to a shop first so the order can become a bill.": "Primero asigne esta llamada a una tienda para que el pedido se convierta en factura.",
+  "Who is this caller?": "¿Quién llamó?", "Pick a shop…": "Elija una tienda…", "Use this shop": "Usar esta tienda", "or": "o", "New shop name": "Nombre de la tienda nueva", "Add shop": "Agregar tienda",
+
+  // calls and texts
+  "Every order call, recorded only after both sides said yes.": "Cada llamada de pedido, grabada solo después de que ambas partes dijeron que sí.",
+  "No calls yet.": "Todavía no hay llamadas.", "Not everyone agreed to recording": "No todos aceptaron la grabación",
+  "On the call": "En la llamada", "Recorded": "Grabada", "Writing it down…": "Escribiéndola…", "Reading the order…": "Leyendo el pedido…", "Done": "Lista", "Something went wrong": "Algo salió mal",
+  "We couldn’t find this call.": "No encontramos esta llamada.", "Call with {who}": "Llamada con {who}", "The recording": "La grabación",
+  "What was said": "Lo que se dijo", "Nothing written down yet.": "Todavía no hay nada escrito.", "The order from this call": "El pedido de esta llamada",
+  "Every text in and out, by SMS or WhatsApp.": "Cada mensaje enviado y recibido, por SMS o WhatsApp.", "No texts yet.": "Todavía no hay mensajes.",
+  "From {who}": "De {who}", "To {who}": "Para {who}", "Not sent to a phone": "No se envió a un teléfono", "Failed": "Falló",
+  "Only on the dashboard": "Solo en el panel", "Delivered": "Entregado", "Not delivered": "No entregado", "On its way": "En camino",
+
+  // catalog
+  "Catalog and prices": "Catálogo y precios", "Store price = the Walmart price per case, refreshed daily. An agreed price above it, or below 40% of it, gets flagged.": "Precio de tienda = el precio de Walmart por caja, actualizado a diario. Un precio acordado por encima, o por debajo del 40%, se marca.",
+  "Refreshing (up to 3 minutes)…": "Actualizando (hasta 3 minutos)…", "Refresh prices": "Actualizar precios", "Product": "Producto", "Barcode": "Código de barras",
+  "Your price / case": "Su precio / caja", "Store price / case": "Precio de tienda / caja", "Scan to set": "Escanear", "edit": "editar",
+  "Walmart listing": "Ver en Walmart", "updated {date}": "actualizado el {date}", "never refreshed": "nunca actualizado",
 };

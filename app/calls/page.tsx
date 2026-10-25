@@ -3,57 +3,49 @@
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { PageHeader, when } from "@/components/money";
+import { t } from "@/components/i18n";
 
-const statusColor: Record<string, string> = {
-  in_progress: "bg-blue-100 text-blue-800",
-  recorded: "bg-indigo-100 text-indigo-800",
-  transcribing: "bg-amber-100 text-amber-800",
-  analyzing: "bg-amber-100 text-amber-800",
-  done: "bg-green-100 text-green-800",
-  failed: "bg-red-100 text-red-800",
+/** Every recorded order call: who called, whether both said yes to recording, and where it is. */
+const statusWord: Record<string, { text: string; cls: string }> = {
+  in_progress: { text: "On the call", cls: "text-teal" },
+  recorded: { text: "Recorded", cls: "text-ink/60" },
+  transcribing: { text: "Writing it down…", cls: "text-wait" },
+  analyzing: { text: "Reading the order…", cls: "text-wait" },
+  done: { text: "Done", cls: "text-teal" },
+  failed: { text: "Something went wrong", cls: "text-late" },
 };
 
 export default function CallsPage() {
   const calls = useQuery(api.calls.list, { limit: 50 });
+  const shops = useQuery(api.billing.listShops, {});
+  const nameFor = (phone: string) => shops?.find((s) => s.phone === phone)?.name;
   return (
-    <div>
-      <h1 className="text-2xl font-semibold">Calls</h1>
-      <p className="text-sm text-zinc-600 mt-1">Every consented call, its recording and transcript status.</p>
-      <div className="mt-6 overflow-x-auto rounded-lg border bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500">
-            <tr>
-              <th className="px-3 py-2">Started</th>
-              <th className="px-3 py-2">Buyer</th>
-              <th className="px-3 py-2">Seller</th>
-              <th className="px-3 py-2">Consent</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {calls === undefined && (
-              <tr><td className="px-3 py-4 text-zinc-500" colSpan={6}>Loading…</td></tr>
-            )}
-            {calls?.length === 0 && (
-              <tr><td className="px-3 py-4 text-zinc-500" colSpan={6}>No calls yet. Call the Twilio number or upload a recording.</td></tr>
-            )}
-            {calls?.map((c) => (
-              <tr key={c._id} className="border-t">
-                <td className="px-3 py-2 whitespace-nowrap">{new Date(c.startedAt).toLocaleString()}</td>
-                <td className="px-3 py-2 font-mono">{c.buyerPhone}</td>
-                <td className="px-3 py-2 font-mono">{c.sellerPhone}</td>
-                <td className="px-3 py-2">{c.buyerConsent ? "buyer ✓" : "buyer ✗"} · {c.sellerConsent ? "seller ✓" : "seller ✗"}</td>
-                <td className="px-3 py-2">
-                  <span className={`rounded px-2 py-0.5 text-xs ${statusColor[c.status] ?? ""}`}>{c.status}</span>
-                  {c.error && <div className="text-xs text-red-700 mt-1 max-w-xs truncate" title={c.error}>{c.error}</div>}
-                </td>
-                <td className="px-3 py-2"><Link className="underline" href={`/calls/${c._id}`}>Open</Link></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="space-y-12">
+      <PageHeader title={t("Calls")} />
+      <p className="-mt-8 text-lg text-ink/60">{t("Every order call, recorded only after both sides said yes.")}</p>
+      {calls === undefined && <p className="text-lg text-ink/60">{t("Loading…")}</p>}
+      {calls?.length === 0 && <p className="text-lg text-ink/60">{t("No calls yet.")}</p>}
+      <ul className="divide-y divide-line border-y-2 border-line text-lg">
+        {calls?.map((c) => {
+          const st = statusWord[c.status] ?? { text: c.status, cls: "text-ink/60" };
+          const shop = nameFor(c.buyerPhone);
+          return (
+            <li key={c._id}>
+              <Link href={`/calls/${c._id}`} className="group grid items-baseline gap-x-6 gap-y-1 py-4 sm:grid-cols-[9rem_1fr_11rem]">
+                <span className="whitespace-nowrap text-base text-ink/50">{when(c.startedAt)}</span>
+                <span>
+                  <span className="underline-offset-4 group-hover:underline">{shop ?? c.buyerPhone}</span>
+                  {shop && <span className="text-base text-ink/50"> · {c.buyerPhone}</span>}
+                  {!(c.buyerConsent && c.sellerConsent) && <span className="block text-base text-wait">{t("Not everyone agreed to recording")}</span>}
+                  {c.error && <span className="block truncate text-base text-late" title={c.error}>{c.error}</span>}
+                </span>
+                <span className={`text-base sm:text-right ${st.cls}`}>{t(st.text)}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

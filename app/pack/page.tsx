@@ -107,13 +107,13 @@ function Catalog() {
     <section>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">Catalog and prices</h2>
+          <h2 className="text-xl font-semibold">{t("Catalog and prices")}</h2>
           <p className="mt-1 text-sm text-zinc-600">
-            Retail reference = Walmart price via Apify, per case, refreshed daily. An agreed price above it, or below 40% of it, is flagged.
+            {t("Store price = the Walmart price per case, refreshed daily. An agreed price above it, or below 40% of it, gets flagged.")}
           </p>
         </div>
         <button onClick={onRefresh} disabled={refreshing} className="rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-50">
-          {refreshing ? "Refreshing (up to ~3 min)…" : "Refresh prices"}
+          {t(refreshing ? "Refreshing (up to 3 minutes)…" : "Refresh prices")}
         </button>
       </div>
       {message && <p className="mt-3 text-sm text-zinc-700">{message}</p>}
@@ -126,14 +126,14 @@ function Catalog() {
         <table className="w-full text-sm">
           <thead className="text-left text-xs uppercase text-zinc-500">
             <tr>
-              <th className="p-3">Product</th>
-              <th className="p-3">Barcode</th>
-              <th className="p-3">Wholesale / case</th>
-              <th className="p-3">Retail ref / case</th>
+              <th className="p-3">{t("Product")}</th>
+              <th className="p-3">{t("Barcode")}</th>
+              <th className="p-3">{t("Your price / case")}</th>
+              <th className="p-3">{t("Store price / case")}</th>
             </tr>
           </thead>
           <tbody>
-            {products === undefined && <tr><td colSpan={4} className="p-3 text-zinc-500">Loading…</td></tr>}
+            {products === undefined && <tr><td colSpan={4} className="p-3 text-zinc-500">{t("Loading…")}</td></tr>}
             {products?.length === 0 && (
               <tr><td colSpan={4} className="p-3 text-zinc-500">Catalog is empty. Run the seed command at the top of catalog:seed in convex/catalog.ts.</td></tr>
             )}
@@ -141,12 +141,12 @@ function Catalog() {
               <tr key={p._id} className="border-t align-top">
                 <td className="p-3">
                   <div className="font-medium">{p.name}</div>
-                  <div className="text-xs text-zinc-500">{p.sku} · {p.unitsPerCase} per {p.unit}</div>
+                  <div className="text-xs text-zinc-500">{p.sku} · {t("{n} per case", { n: p.unitsPerCase })}</div>
                 </td>
                 <td className="p-3">
                   <div className="font-mono text-xs">{p.barcode ?? "—"}</div>
                   <button onClick={() => setScanFor(scanFor === p.sku ? null : p.sku)} className="mt-1 text-xs text-blue-700 hover:underline">
-                    {scanFor === p.sku ? "Cancel" : "Scan to set"}
+                    {t(scanFor === p.sku ? "Cancel" : "Scan to set")}
                   </button>
                   {scanFor === p.sku && (
                     <div className="mt-2 w-72">
@@ -156,15 +156,15 @@ function Catalog() {
                 </td>
                 <td className="p-3">
                   {usd(p.priceWholesaleCents)}
-                  <button onClick={() => void onWholesale(p.sku, p.priceWholesaleCents)} className="ml-2 text-xs text-blue-700 hover:underline">edit</button>
+                  <button onClick={() => void onWholesale(p.sku, p.priceWholesaleCents)} className="ml-2 text-xs text-blue-700 hover:underline">{t("edit")}</button>
                 </td>
                 <td className="p-3">
                   <div>{usd(p.priceRetailRefCents)}</div>
                   {p.priceRefSource && (
-                    <a href={p.priceRefSource} target="_blank" rel="noreferrer" className="text-xs text-blue-700 hover:underline">Walmart listing</a>
+                    <a href={p.priceRefSource} target="_blank" rel="noreferrer" className="text-xs text-blue-700 hover:underline">{t("Walmart listing")}</a>
                   )}
                   <div className="text-xs text-zinc-500">
-                    {p.priceUpdatedAt ? `updated ${new Date(p.priceUpdatedAt).toLocaleString()}` : "never refreshed"}
+                    {p.priceUpdatedAt ? t("updated {date}", { date: when(p.priceUpdatedAt) }) : t("never refreshed")}
                   </div>
                 </td>
               </tr>

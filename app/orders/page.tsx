@@ -6,7 +6,8 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { celebrate } from "@/components/celebrate";
-import { Badge, Oops, PageHeader, SectionTitle, cleanError, usd } from "@/components/money";
+import { Badge, Oops, PageHeader, SectionTitle, cleanError, usd, when } from "@/components/money";
+import { t, useTr } from "@/components/i18n";
 
 /**
  * Orders: what Claude took from each call. Buyer and distributor got the same summary on their phones;
@@ -45,15 +46,15 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-12">
-      <PageHeader title="Orders" />
+      <PageHeader title={t("Orders")} />
       <p className="-mt-8 text-lg text-ink/60">
-        What the C2C AI Assistant took from each call. The buyer and the distributor both got this summary on WhatsApp.
+        {t("What the C2C AI Assistant took from each call. The buyer and the distributor both got this summary on WhatsApp.")}
       </p>
       <Oops msg={err} />
 
       <section>
-        <SectionTitle>Waiting for you</SectionTitle>
-        {data !== undefined && waiting.length === 0 && <p className="mt-4 text-lg text-ink/60">Nothing to confirm.</p>}
+        <SectionTitle>{t("Waiting for you")}</SectionTitle>
+        {data !== undefined && waiting.length === 0 && <p className="mt-4 text-lg text-ink/60">{t("Nothing to confirm.")}</p>}
         <ul className="mt-4 divide-y divide-line">
           {waiting.map((r) => <OrderRow key={r.order._id} row={r} shops={data?.shops ?? []} market={market} onError={setErr} />)}
         </ul>
@@ -61,7 +62,7 @@ export default function OrdersPage() {
 
       {done.length > 0 && (
         <section>
-          <SectionTitle>Confirmed</SectionTitle>
+          <SectionTitle>{t("Confirmed")}</SectionTitle>
           <ul className="mt-4 divide-y divide-line">
             {done.map((r) => <OrderRow key={r.order._id} row={r} shops={data?.shops ?? []} market={market} onError={setErr} />)}
           </ul>
@@ -70,7 +71,7 @@ export default function OrdersPage() {
 
       {noDeal.length > 0 && (
         <section>
-          <SectionTitle>No deal</SectionTitle>
+          <SectionTitle>{t("No deal")}</SectionTitle>
           <ul className="mt-4 divide-y divide-line">
             {noDeal.map((r) => <OrderRow key={r.order._id} row={r} shops={data?.shops ?? []} market={market} onError={setErr} />)}
           </ul>
@@ -90,20 +91,20 @@ function MarketPrices({ catalog, onError }: { catalog: CatalogItem[]; onError: (
   const updated = Math.max(0, ...catalog.map((p) => p.priceUpdatedAt ?? 0));
   return (
     <section>
-      <SectionTitle>Market prices</SectionTitle>
+      <SectionTitle>{t("Market prices")}</SectionTitle>
       <p className="mt-2 text-base text-ink/60">
-        Store prices from Walmart, for comparing what was agreed on a call. They never change an order.
-        {updated > 0 ? ` Updated ${new Date(updated).toLocaleString()}.` : " Not loaded yet."}
+        {t("Store prices from Walmart, for comparing what was agreed on a call. They never change an order.")}
+        {" "}{updated > 0 ? t("Updated {date}.", { date: when(updated) }) : t("Not loaded yet.")}
       </p>
       <ul className="mt-4 divide-y divide-line text-lg">
         {catalog.map((p) => (
           <li key={p.sku} className="flex flex-wrap items-center gap-x-6 py-3">
-            <span className="min-w-0 flex-1">{p.name} <span className="text-base text-ink/50">({p.unitsPerCase} per case)</span></span>
+            <span className="min-w-0 flex-1">{p.name} <span className="text-base text-ink/50">({t("{n} per case", { n: p.unitsPerCase })})</span></span>
             <span className="shrink-0 text-right">
-              {p.priceRetailRefCents !== undefined ? `${usd(p.priceRetailRefCents)} per case` : <span className="text-ink/40">no price yet</span>}
+              {p.priceRetailRefCents !== undefined ? t("{amount} per case", { amount: usd(p.priceRetailRefCents) }) : <span className="text-ink/40">{t("no price yet")}</span>}
             </span>
             {p.priceRefSource && (
-              <a href={p.priceRefSource} target="_blank" rel="noopener" className="shrink-0 text-base text-teal underline-offset-4 hover:underline">listing</a>
+              <a href={p.priceRefSource} target="_blank" rel="noopener" className="shrink-0 text-base text-teal underline-offset-4 hover:underline">{t("listing")}</a>
             )}
           </li>
         ))}
@@ -117,7 +118,7 @@ function MarketPrices({ catalog, onError }: { catalog: CatalogItem[]; onError: (
         }}
         className="btn mt-4 bg-white px-4 py-2 text-base"
       >
-        {busy ? "Getting prices…" : "Refresh market prices"}
+        {t(busy ? "Getting prices…" : "Refresh market prices")}
       </button>
     </section>
   );
@@ -128,6 +129,7 @@ function OrderRow({ row, shops, market, onError }: { row: Row; shops: ShopOption
   const confirm = useMutation(api.orders.confirmManually);
   const [busy, setBusy] = useState(false);
   const badge = statusBadge[order.status];
+  const tr = useTr([...order.openIssues]);
   const canConfirm = order.status === "verbal_agreement";
 
   async function run(party: "buyer" | "seller" | "both") {
@@ -146,20 +148,20 @@ function OrderRow({ row, shops, market, onError }: { row: Row; shops: ShopOption
   return (
     <li className="space-y-3 py-6">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <span className="text-xl">{row.shopName ?? `Unknown caller ${row.buyerPhone ?? ""}`}</span>
-        <Badge tone={badge.tone}>{badge.word}</Badge>
-        <span className="ml-auto text-lg">{order.totalCents !== undefined ? usd(order.totalCents) : "No total yet"}</span>
+        <span className="text-xl">{row.shopName ?? t("Unknown caller {phone}", { phone: row.buyerPhone ?? "" })}</span>
+        <Badge tone={badge.tone}>{t(badge.word)}</Badge>
+        <span className="ml-auto text-lg">{order.totalCents !== undefined ? usd(order.totalCents) : t("No total yet")}</span>
       </div>
 
       {order.lines.length > 0 && (
         <ul className="text-lg text-ink/80">
           {order.lines.map((l, i) => (
             <li key={i}>
-              {l.qty > 0 ? `${l.qty} ${l.unit === "case" ? (l.qty === 1 ? "case" : "cases") : l.unit} ` : ""}{l.description}
-              {l.qty === 0 && <span className="text-wait"> (quantity not stated)</span>}
-              {l.unitPriceCents !== undefined && <span className="text-ink/60"> at {usd(l.unitPriceCents)}</span>}
+              {l.qty > 0 ? `${l.qty} ${l.unit === "case" ? t(l.qty === 1 ? "case" : "cases") : l.unit} ` : ""}{l.description}
+              {l.qty === 0 && <span className="text-wait"> {t("(quantity not stated)")}</span>}
+              {l.unitPriceCents !== undefined && <span className="text-ink/60"> {t("at {amount}", { amount: usd(l.unitPriceCents) })}</span>}
               {l.unit === "case" && market.get(l.sku)?.priceRetailRefCents !== undefined && (
-                <span className="text-base text-ink/45"> · store price {usd(market.get(l.sku)!.priceRetailRefCents)}/case</span>
+                <span className="text-base text-ink/45"> · {t("store price {amount}/case", { amount: usd(market.get(l.sku)!.priceRetailRefCents) })}</span>
               )}
             </li>
           ))}
@@ -168,18 +170,18 @@ function OrderRow({ row, shops, market, onError }: { row: Row; shops: ShopOption
 
       {(order.unavailableItems ?? []).length > 0 && (
         <div className="text-base text-ink/60">
-          Currently not available:{" "}
-          {(order.unavailableItems ?? []).map((u) => (u.qty > 0 ? `${u.qty} ${u.unit === "case" ? (u.qty === 1 ? "case" : "cases") : u.unit} ${u.description}` : u.description)).join(", ")}
+          {t("Currently not available:")}{" "}
+          {(order.unavailableItems ?? []).map((u) => (u.qty > 0 ? `${u.qty} ${u.unit === "case" ? t(u.qty === 1 ? "case" : "cases") : u.unit} ${u.description}` : u.description)).join(", ")}
         </div>
       )}
 
       <div className="text-base text-ink/60">
-        Delivery: {order.deliveryDate ?? "not discussed"} · Payment: {order.paymentTerms ?? "not discussed"}
+        {t("Delivery:")} {order.deliveryDate ?? t("not discussed")} · {t("Payment:")} {order.paymentTerms ? t(order.paymentTerms) : t("not discussed")}
       </div>
 
       {order.openIssues.length > 0 && (
         <ul className="list-disc pl-5 text-base text-wait">
-          {order.openIssues.map((issue, i) => <li key={i}>{issue}</li>)}
+          {order.openIssues.map((issue, i) => <li key={i}>{tr(issue)}</li>)}
         </ul>
       )}
 
@@ -189,30 +191,30 @@ function OrderRow({ row, shops, market, onError }: { row: Row; shops: ShopOption
         {canConfirm && (
           <>
             <button disabled={busy || !order.shopId} onClick={() => run("both")} className="btn bg-go px-4 py-2 text-white">
-              Confirm order
+              {t("Confirm order")}
             </button>
             {!order.buyerConfirmedAt && (
-              <button disabled={busy} onClick={() => run("buyer")} className="btn bg-white px-3 py-2">Buyer confirmed</button>
+              <button disabled={busy} onClick={() => run("buyer")} className="btn bg-white px-3 py-2">{t("Buyer confirmed")}</button>
             )}
             {!order.sellerConfirmedAt && (
-              <button disabled={busy} onClick={() => run("seller")} className="btn bg-white px-3 py-2">Distributor confirmed</button>
+              <button disabled={busy} onClick={() => run("seller")} className="btn bg-white px-3 py-2">{t("Distributor confirmed")}</button>
             )}
           </>
         )}
         {order.status === "needs_review" && (
-          <span className="text-wait">Check the points above against the call before treating this as an order.</span>
+          <span className="text-wait">{t("Check the points above against the call before treating this as an order.")}</span>
         )}
-        {row.invoiceId && <Link href="/invoices" className="text-teal underline-offset-4 hover:underline">See the bill</Link>}
+        {row.invoiceId && <Link href="/invoices" className="text-teal underline-offset-4 hover:underline">{t("See the bill")}</Link>}
         {row.callId && (
-          <Link href={`/calls/${row.callId}`} className="text-teal underline-offset-4 hover:underline">Hear the call and read the transcript</Link>
+          <Link href={`/calls/${row.callId}`} className="text-teal underline-offset-4 hover:underline">{t("Hear the call and read the transcript")}</Link>
         )}
         <span className="text-ink/50">
-          {order.buyerConfirmedAt ? "Buyer ✓" : "Buyer not yet"} · {order.sellerConfirmedAt ? "Distributor ✓" : "Distributor not yet"}
+          {t(order.buyerConfirmedAt ? "Buyer ✓" : "Buyer not yet")} · {t(order.sellerConfirmedAt ? "Distributor ✓" : "Distributor not yet")}
         </span>
       </div>
 
       {canConfirm && !order.shopId && (
-        <p className="text-base text-ink/60">Attach this caller to a shop first so the order can become a bill.</p>
+        <p className="text-base text-ink/60">{t("Attach this caller to a shop first so the order can become a bill.")}</p>
       )}
     </li>
   );
@@ -233,18 +235,18 @@ function AttachShop({ orderId, shops, onError }: { orderId: Id<"orders">; shops:
 
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg bg-mist p-3 text-base">
-      <span className="text-ink/70">Who is this caller?</span>
+      <span className="text-ink/70">{t("Who is this caller?")}</span>
       <select value={shopId} onChange={(e) => setShopId(e.target.value)} className="rounded-md border border-line bg-white px-2 py-1.5">
-        <option value="">Pick a shop…</option>
+        <option value="">{t("Pick a shop…")}</option>
         {shops.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
       </select>
       <button disabled={busy || !shopId} onClick={() => go(() => attach({ orderId, shopId: shopId as Id<"shops"> }))} className="btn bg-white px-3 py-1.5">
-        Use this shop
+        {t("Use this shop")}
       </button>
-      <span className="text-ink/50">or</span>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New shop name" className="rounded-md border border-line bg-white px-2 py-1.5" />
+      <span className="text-ink/50">{t("or")}</span>
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("New shop name")} className="rounded-md border border-line bg-white px-2 py-1.5" />
       <button disabled={busy || !name.trim()} onClick={() => go(() => create({ orderId, name }))} className="btn bg-white px-3 py-1.5">
-        Add shop
+        {t("Add shop")}
       </button>
     </div>
   );
