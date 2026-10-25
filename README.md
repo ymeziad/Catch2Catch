@@ -37,7 +37,7 @@ npm run dev           # Next.js on http://localhost:3000
 
 Then set the Convex environment variables listed in [`.env.example`](.env.example) with `npx convex env set NAME value` (or in the Convex dashboard).
 
-### Twilio setup (Person 1, first 30 minutes)
+### Twilio setup (Yosef, first 30 minutes)
 
 1. Get a Twilio number. On a **trial account** you can only call/text verified numbers: verify all three teammates' phones.
 2. In the Twilio console, set the number's **Voice** webhook to `POST https://<deployment>.convex.site/twilio/voice` and its **Messaging** webhook to `POST https://<deployment>.convex.site/twilio/sms`. (The `.convex.site` host is where Convex serves HTTP actions; `npx convex dev` prints it.)
@@ -73,16 +73,16 @@ docs/team-prompts/       the three per-person build briefs
 
 | Function | Owner | Called by |
 |---|---|---|
-| `internal.messaging.sendSms({ to, body, relatedType?, relatedId? })` | Person 1 | everyone |
-| `internal.orders.analyzeCall({ callId })` | Person 2 | Person 1 after transcript is saved |
-| `internal.orders.confirmOrder({ orderId, party })` | Person 2 | Person 1 SMS router on CONFIRM |
-| `internal.disputes.openFromSms({ fromPhone, body })` | Person 3 | Person 1 SMS router on DISPUTE / free text |
+| `internal.messaging.sendSms({ to, body, relatedType?, relatedId? })` | Yosef | everyone |
+| `internal.orders.analyzeCall({ callId })` | Person 2 | Yosef after transcript is saved |
+| `internal.orders.confirmOrder({ orderId, party })` | Person 2 | Yosef SMS router on CONFIRM |
+| `internal.disputes.openFromSms({ fromPhone, body })` | Person 3 | Yosef SMS router on DISPUTE / free text |
 | `internal.billing.createInvoiceForOrder({ orderId })` | Person 3 | `confirmOrder` when both confirmed |
 | `internal.audit.log({ actor, action, entityType, entityId, reason, evidenceRefs? })` | Person 3 | everyone |
 
 Demo time: always use `now = Date.now() + settings.demoClockOffsetMs` for scheduling logic.
 
-## Calls, transcription and messaging (Person 1) — design notes
+## Calls, transcription and messaging (Yosef) — design notes
 
 **Consent.** The buyer hears the consent message inside a `<Gather>` and must press 1 before anything else happens; if they don't, we say goodbye and hang up and no `calls` row is created. The seller is dialed with `<Number url="/twilio/seller-screen">`, so the same message plays on *their* leg before the two are bridged; pressing 1 sets `sellerConsent` and returns empty TwiML (which bridges), anything else hangs up their leg. Because `<Dial record="record-from-answer-dual">` can start recording as soon as the seller answers, the recording callback checks both consent flags and **deletes the recording at Twilio** when either is missing, so a declined call leaves no audio behind. Every consent decision is written to the audit log.
 
@@ -105,6 +105,6 @@ Demo time: always use `now = Date.now() + settings.demoClockOffsetMs` for schedu
 
 ## Team
 
-- Person 1 — calls, transcription, messaging (Twilio, consent, recording, Grok STT, SMS in/out)
+- Yosef (ymeziad) — calls, transcription, messaging (Twilio, consent, recording, Grok STT, SMS in/out)
 - Person 2 — order brain, catalog, packing check, Apify
 - Amaan Singla — money, automation, dashboard

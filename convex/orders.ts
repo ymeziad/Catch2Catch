@@ -4,10 +4,10 @@ import { v } from "convex/values";
 
 /**
  * OWNER: Person 2 (order brain). These are STUBS with the agreed names and arguments
- * so Person 1's pipeline compiles and runs end to end. Replace the bodies, keep the signatures.
+ * so Yosef's pipeline compiles and runs end to end. Replace the bodies, keep the signatures.
  */
 
-/** Called by Person 1 once transcript segments are saved and the call is in status "analyzing". */
+/** Called by Yosef once transcript segments are saved and the call is in status "analyzing". */
 export const analyzeCall = internalAction({
   args: { callId: v.id("calls") },
   handler: async (ctx, { callId }) => {
@@ -22,7 +22,7 @@ export const analyzeCall = internalAction({
   },
 });
 
-/** Called by Person 1's inbound SMS router on CONFIRM. */
+/** Called by Yosef's inbound SMS router on CONFIRM. */
 export const confirmOrder = internalMutation({
   args: { orderId: v.id("orders"), party: v.union(v.literal("buyer"), v.literal("seller")) },
   handler: async (ctx, { orderId, party }) => {

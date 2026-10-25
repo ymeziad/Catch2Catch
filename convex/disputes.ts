@@ -2,7 +2,7 @@ import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
- * OWNER: Person 3. STUB with the agreed signature. Person 1's SMS router calls this on
+ * OWNER: Person 3. STUB with the agreed signature. Yosef's SMS router calls this on
  * DISPUTE or any free-text reply from a shop about an existing order/invoice.
  */
 export const openFromSms = internalMutation({
