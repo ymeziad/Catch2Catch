@@ -3,8 +3,29 @@
 import { useEffect, useRef, useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { t } from "@/components/i18n";
+import { locale, t } from "@/components/i18n";
 import { cleanError } from "@/components/money";
+
+/**
+ * Read with the browser's own voice: the fallback when the ElevenLabs voice isn't set up or doesn't answer,
+ * so the button always works. Picks the best installed voice for the page's language.
+ */
+function speakInBrowser(text: string, onEnd: () => void): boolean {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  const lang = locale(); // "en-US" or "es-US"
+  const u = new SpeechSynthesisUtterance(text.replace(/\s+/g, " ").trim());
+  u.lang = lang;
+  u.rate = 0.98;
+  const voices = synth.getVoices().filter((v) => v.lang.toLowerCase().startsWith(lang.slice(0, 2)));
+  const prefer = ["Samantha", "Ava", "Allison", "Google US English", "Paulina", "Mónica", "Google español de Estados Unidos"];
+  u.voice = prefer.map((n) => voices.find((v) => v.name.startsWith(n))).find(Boolean) ?? voices.find((v) => v.localService) ?? voices[0] ?? null;
+  u.onend = onEnd;
+  u.onerror = onEnd;
+  synth.speak(u);
+  return true;
+}
 
 /** "Read it to me": a natural voice (ElevenLabs, via convex/voice.ts) reads the page's words out loud. */
 export function ReadAloud({ text, className = "" }: { text: () => string; className?: string }) {
@@ -13,14 +34,15 @@ export function ReadAloud({ text, className = "" }: { text: () => string; classN
   const [err, setErr] = useState("");
   const audio = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => () => { audio.current?.pause(); }, []);
+  useEffect(() => () => { audio.current?.pause(); if (typeof window !== "undefined") window.speechSynthesis?.cancel(); }, []);
 
   async function go() {
-    if (state === "playing") { audio.current?.pause(); setState("idle"); return; }
+    if (state === "playing") { audio.current?.pause(); window.speechSynthesis?.cancel(); setState("idle"); return; }
     if (state === "loading") return;
     setErr(""); setState("loading");
+    const words = text();
     try {
-      const url = await speak({ text: text() });
+      const url = await speak({ text: words });
       const a = new Audio(url);
       audio.current = a;
       a.onended = () => setState("idle");
@@ -28,6 +50,12 @@ export function ReadAloud({ text, className = "" }: { text: () => string; classN
       await a.play();
       setState("playing");
     } catch (e) {
+      // ElevenLabs not set up or not answering: read it with the browser's voice instead.
+      if (speakInBrowser(words, () => setState("idle"))) {
+        console.warn("[ReadAloud] using the browser voice:", cleanError(e));
+        setState("playing");
+        return;
+      }
       setState("idle");
       setErr(cleanError(e));
     }
