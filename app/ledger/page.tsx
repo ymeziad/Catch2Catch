@@ -2,57 +2,63 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Badge, Card, usd, when } from "@/components/money";
+import { PageHeader, SectionTitle, usd, when } from "@/components/money";
 
-const names: Record<string, string> = { cash: "Cash", accounts_receivable: "Accounts receivable", sales: "Sales", sales_returns: "Sales returns" };
+/** OWNER: Amaan. The books: every dollar written down twice, so it always adds up. */
+const names: Record<string, string> = { cash: "Cash", accounts_receivable: "Owed to you", sales: "Sales", sales_returns: "Taken off bills and refunds" };
 
 export default function LedgerPage() {
   const tb = useQuery(api.ledger.trialBalance, {});
   const journal = useQuery(api.ledger.journal, { limit: 60 });
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Ledger</h1>
-        <p className="mt-1 text-sm text-zinc-600">Double-entry books. Every money event posts balanced debits and credits. Cash refunds are simulated: the entry is real, no money moves.</p>
-      </div>
+    <div className="space-y-12">
+      <PageHeader title="Books" />
 
-      <Card title="Trial balance" right={tb && (tb.balanced ? <Badge tone="green">Balanced ✓</Badge> : <Badge tone="red">OUT OF BALANCE</Badge>)}>
-        <table className="w-full text-sm">
-          <thead className="text-left text-xs text-zinc-500"><tr><th className="py-1">Account</th><th className="text-right">Debits</th><th className="text-right">Credits</th><th className="text-right">Balance</th></tr></thead>
-          <tbody>
+      <section>
+        <div className="flex items-baseline justify-between gap-4">
+          <SectionTitle>Does it add up?</SectionTitle>
+          {tb && <span className={`text-lg ${tb.balanced ? "text-teal" : "text-late"}`}>{tb.balanced ? "Yes, it adds up." : "No, something is off."}</span>}
+        </div>
+        <table className="mt-4 w-full text-lg">
+          <thead className="text-left text-base text-ink/50">
+            <tr><th className="pb-2 font-normal">Account</th><th className="pb-2 text-right font-normal">In</th><th className="pb-2 text-right font-normal">Out</th><th className="pb-2 text-right font-normal">Balance</th></tr>
+          </thead>
+          <tbody className="divide-y divide-line">
             {tb?.accounts.map((a) => (
-              <tr key={a.account} className="border-t">
-                <td className="py-1">{names[a.account]}</td>
-                <td className="text-right">{usd(a.debitCents)}</td>
-                <td className="text-right">{usd(a.creditCents)}</td>
-                <td className="text-right font-medium">{usd(a.balanceCents)}</td>
+              <tr key={a.account}>
+                <td className="py-3">{names[a.account]}</td>
+                <td className="py-3 text-right">{usd(a.debitCents)}</td>
+                <td className="py-3 text-right">{usd(a.creditCents)}</td>
+                <td className="py-3 text-right">{usd(a.balanceCents)}</td>
               </tr>
             ))}
             {tb && (
-              <tr className="border-t-2 font-semibold">
-                <td className="py-1">Total</td>
-                <td className="text-right">{usd(tb.totalDebits)}</td>
-                <td className="text-right">{usd(tb.totalCredits)}</td>
+              <tr className="font-semibold">
+                <td className="py-3">Total</td>
+                <td className="py-3 text-right">{usd(tb.totalDebits)}</td>
+                <td className="py-3 text-right">{usd(tb.totalCredits)}</td>
                 <td />
               </tr>
             )}
           </tbody>
         </table>
-      </Card>
+      </section>
 
-      <Card title="Journal">
-        <ul className="space-y-3 text-sm">
-          {journal?.length === 0 && <li className="text-zinc-500">No entries yet.</li>}
+      <section>
+        <SectionTitle>Every entry</SectionTitle>
+        {journal?.length === 0 && <p className="mt-4 text-lg text-ink/60">Nothing has been written down yet.</p>}
+        <ul className="mt-4 divide-y divide-line">
           {journal?.map((g) => (
-            <li key={g.entryGroupId} className="border-t pt-2 first:border-0 first:pt-0">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-                <span>{when(g.date)}</span><Badge>{g.refType}</Badge><span className="text-zinc-800">{g.memo}</span>
+            <li key={g.entryGroupId} className="py-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-6">
+                <span className="text-lg">{g.memo.replace(/^SIMULATED /, "")}</span>
+                <span className="whitespace-nowrap text-base text-ink/50">{when(g.date)}</span>
               </div>
-              <table className="mt-1 w-full font-mono text-xs">
+              <table className="mt-2 w-full text-base text-ink/70">
                 <tbody>
                   {g.lines.map((l) => (
                     <tr key={l._id}>
-                      <td className={l.creditCents ? "pl-8" : ""}>{l.debitCents ? "Dr" : "Cr"} {names[l.account]}</td>
+                      <td className={l.creditCents ? "pl-6" : ""}>{names[l.account]}</td>
                       <td className="w-28 text-right">{l.debitCents ? usd(l.debitCents) : ""}</td>
                       <td className="w-28 text-right">{l.creditCents ? usd(l.creditCents) : ""}</td>
                     </tr>
@@ -62,7 +68,7 @@ export default function LedgerPage() {
             </li>
           ))}
         </ul>
-      </Card>
+      </section>
     </div>
   );
 }

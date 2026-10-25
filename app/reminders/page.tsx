@@ -2,50 +2,47 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Badge, Card, DemoClock, statusTone, when } from "@/components/money";
+import { DemoTools, PageHeader, SectionTitle, statusWord, when } from "@/components/money";
 
-const kindLabel: Record<string, string> = {
-  order_unconfirmed: "Confirm your order",
-  payment_due_soon: "Payment due soon",
-  payment_due: "Payment due today",
-  payment_late: "Payment overdue",
-  escalate_owner: "Escalate to owner",
+/** OWNER: Amaan. Reminders the C2C AI Assistant sent or will send. */
+const kindText: Record<string, (shop: string) => string> = {
+  order_unconfirmed: (s) => `Ask ${s} to confirm their order`,
+  payment_due_soon: (s) => `Remind ${s} that payment is coming up`,
+  payment_due: (s) => `Remind ${s} that payment is due today`,
+  payment_late: (s) => `Tell ${s} their payment is late`,
+  escalate_owner: (s) => `Let you know ${s} still hasn't paid`,
 };
 
 export default function RemindersPage() {
   const rows = useQuery(api.reminders.timeline, { limit: 150 });
-  const clock = useQuery(api.reminders.clock, {});
-  const now = clock?.demoNow ?? 0;
+  const upcoming = (rows ?? []).filter((r) => r.status === "scheduled");
+  const done = (rows ?? []).filter((r) => r.status !== "scheduled").reverse();
+
+  const Row = ({ r, showStatus = true }: { r: NonNullable<typeof rows>[number]; showStatus?: boolean }) => (
+    <li className={`grid items-baseline gap-x-6 gap-y-1 py-4 sm:grid-cols-[9rem_1fr_6rem] ${r.status === "cancelled" ? "text-ink/45" : ""}`}>
+      <span className="whitespace-nowrap text-base text-ink/50">{when(r.scheduledFor)}</span>
+      <span>{kindText[r.kind](r.shopName ?? "the shop")}</span>
+      {showStatus && <span className={`text-base sm:text-right ${r.status === "sent" ? (r.kind === "escalate_owner" ? "text-wait" : "text-teal") : "text-ink/50"}`}>{cap1(statusWord[r.status])}</span>}
+    </li>
+  );
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Reminders</h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          The agent chases payments on a schedule, escalates to the owner, and stops when paid or disputed. Shops that paid late twice in 90 days get escalated sooner.
-          Use the demo clock to watch a week happen in seconds.
-        </p>
-      </div>
-      <DemoClock />
-      <Card title="Timeline">
-        <ol className="relative space-y-2 border-l pl-4 text-sm">
-          {rows?.length === 0 && <li className="text-zinc-500">No reminders yet. Create a demo order on the Invoices page.</li>}
-          {rows?.map((r) => {
-            const isNowLine = r.status === "scheduled" && r.scheduledFor > now;
-            return (
-              <li key={r._id} className={isNowLine ? "opacity-60" : ""}>
-                <span className={`absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full ${r.status === "sent" ? (r.kind === "escalate_owner" ? "bg-red-500" : "bg-green-500") : r.status === "cancelled" ? "bg-zinc-300" : "bg-blue-400"}`} />
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="w-36 font-mono text-xs text-zinc-500">{when(r.scheduledFor)}</span>
-                  <span className="font-medium">{kindLabel[r.kind]}</span>
-                  <span className="text-zinc-600">{r.shopName ?? ""}</span>
-                  <Badge tone={statusTone[r.status]}>{r.status}</Badge>
-                  {r.escalated && <Badge tone="red">owner flagged</Badge>}
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      </Card>
+    <div className="space-y-12">
+      <PageHeader title="Reminders" />
+      <section>
+        <SectionTitle>Coming up</SectionTitle>
+        {rows !== undefined && upcoming.length === 0 && <p className="mt-4 text-lg text-ink/60">No reminders are scheduled.</p>}
+        <ul className="mt-4 divide-y divide-line text-lg">{upcoming.map((r) => <Row key={r._id} r={r} showStatus={false} />)}</ul>
+      </section>
+      {done.length > 0 && (
+        <section>
+          <SectionTitle>Already handled</SectionTitle>
+          <ul className="mt-4 divide-y divide-line text-lg">{done.map((r) => <Row key={r._id} r={r} />)}</ul>
+        </section>
+      )}
+      <DemoTools />
     </div>
   );
 }
+
+function cap1(s: string) { return s ? s[0].toUpperCase() + s.slice(1) : s; }

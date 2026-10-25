@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
+import { Public_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "@/components/ConvexClientProvider";
+import { Nav } from "@/components/Nav";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const appSans = Public_Sans({ variable: "--font-app", subsets: ["latin"], weight: ["400", "500", "600"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -14,23 +15,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-zinc-50 text-zinc-900">
+    <html lang="en" className={`${appSans.variable} ${geistMono.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col bg-white text-ink">
         <ConvexClientProvider>
-          <header className="border-b bg-white">
-            <nav className="mx-auto max-w-5xl flex items-center gap-6 px-4 h-14 text-sm">
-              <Link href="/" className="font-semibold">Catch2Catch</Link>
-              <Link href="/calls" className="hover:underline">Calls</Link>
-              <Link href="/invoices" className="hover:underline">Invoices</Link>
-              <Link href="/disputes" className="hover:underline">Disputes</Link>
-              <Link href="/reminders" className="hover:underline">Reminders</Link>
-              <Link href="/ledger" className="hover:underline">Ledger</Link>
-              <Link href="/audit" className="hover:underline">Audit</Link>
-              <Link href="/messages" className="hover:underline">Messages</Link>
-              <Link href="/admin/upload" className="hover:underline">Upload recording</Link>
-            </nav>
-          </header>
-          <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">{children}</main>
+          <Suspense fallback={<div className="h-16 bg-white" />}><Nav /></Suspense>
+          <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
+            {/* Everything below the header is drawn 20% smaller; the header keeps its size. */}
+            <div style={{ zoom: 0.8 }}>{children}</div>
+          </main>
         </ConvexClientProvider>
       </body>
     </html>

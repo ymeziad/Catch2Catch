@@ -46,7 +46,7 @@ export const seedDemo = internalMutation({
       created.push(shop.name);
       if (key === "late") await seedLatePayerHistory(ctx, shopId, now);
     }
-    await ctx.db.insert("auditLog", { actor: "system", action: "demo_seeded", entityType: "settings", entityId: "seed", reason: created.length ? `Seeded: ${created.join(", ")}` : "Seed run: nothing new to add", at: now });
+    await ctx.db.insert("auditLog", { actor: "system", action: "seeded", entityType: "settings", entityId: "seed", reason: created.length ? `Seeded: ${created.join(", ")}` : "Seed run: nothing new to add", at: now });
     return created;
   },
 });
@@ -135,7 +135,7 @@ export const insertScenarioOrder = internalMutation({
         .map((l) => ({ sku: l.sku, expectedQty: l.qty, scannedQty: scans.find((s) => s.sku === l.sku)?.qty ?? 0 }))
         .filter((m) => m.expectedQty !== m.scannedQty);
       await ctx.db.insert("packingChecks", {
-        orderId, packerName: "Luis (demo)", scans, photoFileIds: packing.photoFileId ? [packing.photoFileId] : [],
+        orderId, packerName: "Luis", scans, photoFileIds: packing.photoFileId ? [packing.photoFileId] : [],
         result: mismatches.length ? "mismatch" : "match", mismatches, checkedAt: now - 2 * HOUR,
       });
     }
@@ -145,14 +145,14 @@ export const insertScenarioOrder = internalMutation({
       await ctx.db.patch(orderId, { status: "confirmed", buyerConfirmedAt: now, sellerConfirmedAt: now });
       invoiceId = await ctx.runMutation(internal.billing.createInvoiceForOrder, { orderId });
     }
-    await ctx.db.insert("auditLog", { actor: "system", action: "demo_order_created", entityType: "order", entityId: orderId, reason: `Demo order created for ${shop.name}${packing ? ` with a ${packing.kind} packing check` : " (no packing check)"}${confirm ? "; both parties confirmed" : ""}`, at: now });
+    await ctx.db.insert("auditLog", { actor: "system", action: "order_created", entityType: "order", entityId: orderId, reason: `New order created for ${shop.name}${packing ? ` with a ${packing.kind} packing check` : " (no packing check)"}${confirm ? "; both parties confirmed" : ""}`, at: now });
     return { orderId, invoiceId };
   },
 });
 
 /** Stores a small placeholder "box photo" so packing evidence has a photo id. */
 export async function storePlaceholderPhoto(ctx: { storage: { store: (b: Blob) => Promise<Id<"_storage">> } }) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200"><rect width="320" height="200" fill="#c8a165"/><rect x="20" y="20" width="280" height="160" fill="none" stroke="#7a5a2b" stroke-width="6"/><text x="160" y="110" font-family="sans-serif" font-size="20" text-anchor="middle" fill="#3b2a12">Packed box (demo photo)</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200"><rect width="320" height="200" fill="#c8a165"/><rect x="20" y="20" width="280" height="160" fill="none" stroke="#7a5a2b" stroke-width="6"/><text x="160" y="110" font-family="sans-serif" font-size="20" text-anchor="middle" fill="#3b2a12">Packed box</text></svg>`;
   return await ctx.storage.store(new Blob([svg], { type: "image/svg+xml" }));
 }
 
@@ -186,5 +186,58 @@ export const simulateShopText = mutation({
     if (!shop) throw new Error("shop not found");
     await ctx.db.insert("messages", { direction: "in", to: "demo", from: shop.phone, body, relatedType: "shop", relatedId: shopId, status: "received", createdAt: await demoNow(ctx) });
     await ctx.runMutation(internal.disputes.openFromSms, { fromPhone: shop.phone, body });
+  },
+});
+
+/** One-off: remove old "(demo)" labels from records made before they were dropped. Run: npx convex run seed:cleanUpLabels */
+export const cleanUpLabels = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let n = 0;
+    for (const p of await ctx.db.query("packingChecks").collect()) {
+      if (p.packerName.includes("(demo)")) { await ctx.db.patch(p._id, { packerName: p.packerName.replace(/\s*\(demo\)/g, "") }); n++; }
+    }
+    for (const a of await ctx.db.query("auditLog").collect()) {
+      if (/demo order created/i.test(a.reason) || a.action === "demo_order_created") {
+        await ctx.db.patch(a._id, { action: "order_created", reason: a.reason.replace(/^Demo order created/i, "New order created") }); n++;
+      }
+    }
+    return `Cleaned ${n} records`;
+  },
+});
+
+/**
+ * One-off: delete test texts (and the problems they created) whose text contains a phrase.
+ * Run: npx convex run seed:removeTestTexts '{"contains":"forgot to give me sex"}'
+ */
+export const removeTestTexts = internalMutation({
+  args: { contains: v.string() },
+  handler: async (ctx, { contains }) => {
+    const needle = contains.toLowerCase();
+    let disputes = 0, messages = 0, logs = 0;
+    for (const d of await ctx.db.query("disputes").collect()) {
+      if (!d.shopMessage.toLowerCase().includes(needle)) continue;
+      for (const a of await ctx.db.query("auditLog").withIndex("by_entity", (q) => q.eq("entityType", "dispute").eq("entityId", d._id)).collect()) {
+        await ctx.db.delete(a._id); logs++;
+      }
+      await ctx.db.delete(d._id); disputes++;
+      // Put the bill back to normal if nothing else is open on it.
+      const inv = await ctx.db.get(d.invoiceId);
+      if (inv) {
+        const stillOpen = (await ctx.db.query("disputes").withIndex("by_invoiceId", (q) => q.eq("invoiceId", inv._id)).collect())
+          .some((x) => x.status === "open" || x.status === "awaiting_approval");
+        if (!stillOpen && inv.status === "disputed") {
+          const paid = (await ctx.db.query("payments").withIndex("by_invoiceId", (q) => q.eq("invoiceId", inv._id)).collect()).reduce((s, p) => s + p.amountCents, 0);
+          await ctx.db.patch(inv._id, { status: inv.balanceCents === 0 ? "paid" : paid > 0 ? "partially_paid" : "open" });
+        }
+      }
+    }
+    for (const m of await ctx.db.query("messages").collect()) {
+      if (m.body.toLowerCase().includes(needle)) { await ctx.db.delete(m._id); messages++; }
+    }
+    for (const a of await ctx.db.query("auditLog").collect()) {
+      if (a.reason.toLowerCase().includes(needle)) { await ctx.db.delete(a._id); logs++; }
+    }
+    return `Deleted ${disputes} problem(s), ${messages} text(s), ${logs} log line(s).`;
   },
 });

@@ -67,9 +67,12 @@ export const openFromSms = internalMutation({
       return null;
     }
 
-    // An open dispute for this shop absorbs the new message (e.g. reply to our short-payment text).
+    // A new text joins an open problem only when it's the shop answering our
+    // "you paid short, what happened?" text. Any other text is its own problem, decided separately.
     const shopDisputes = await ctx.db.query("disputes").withIndex("by_shopId", (q) => q.eq("shopId", shop._id)).order("desc").take(20);
-    const active = shopDisputes.find((d) => d.status === "open" || d.status === "awaiting_approval");
+    const active: Doc<"disputes"> | undefined = shopDisputes.find(
+      (d) => (d.status === "open" || d.status === "awaiting_approval") && d.requestedBy === "agent" && !d.shopMessage,
+    );
     if (active) {
       const shopMessage = active.shopMessage ? `${active.shopMessage}\n${body}` : body;
       await ctx.db.patch(active._id, { shopMessage, status: "open" });
@@ -78,7 +81,7 @@ export const openFromSms = internalMutation({
       return active._id;
     }
 
-    // Otherwise: the shop's most recent invoice with money still owed (or the most recent invoice at all).
+    // Otherwise a new problem on the shop's most recent bill with money still owed (or the most recent bill at all).
     const invoices = await ctx.db.query("invoices").withIndex("by_shopId", (q) => q.eq("shopId", shop._id)).order("desc").take(20);
     const inv = invoices.find((i) => i.balanceCents > 0) ?? invoices[0];
     if (!inv) {
@@ -174,7 +177,11 @@ Rules:
 - When sources disagree, name both sources and what each says.
 - Never invent a number. amountCents must be computed from prices in the order lines (qty × unitPriceCents) or the invoice/payments. Use 0 for reject_with_evidence and escalate.
 - claimedItems: what the shop says is wrong, using order SKUs. If the shop sent no details but paid short and the evidence (e.g. a packing mismatch) explains the gap exactly, list those items with reason "inferred from short payment and packing mismatch". Otherwise empty.
-- reasoning: 3 to 5 plain sentences a busy owner can read in 10 seconds.
+- relevance: "ok" if the shop's text is a real complaint about this order; "partly" if it mixes a real complaint with nonsense, rude, sexual or unrelated content; "not_about_order" if there is no real complaint about this order at all (spam, jokes, abuse, gibberish, or only items that were never on the order). For a short payment with no text, use "ok".
+- For "partly": base claimedItems, summary, reasoning and the recommendation ONLY on the real part, and leave the rest out of shopMessageClean entirely.
+- shopMessageClean: if the shop sent a text, rewrite their LATEST text so it is perfectly clear to the owner: correct grammar, spelling, capitalization, punctuation and a full stop; real product names as on the order (Dr Pepper, Coca-Cola, Celsius, horchata); numbers as digits. Keep their exact meaning, details and first-person voice ("we", "our"). Do NOT summarize, shorten, add facts, or soften it. Example: "hey we only got 3 cases of dr pepper not 5" becomes "Hey, we only got 3 cases of Dr Pepper instead of the 5 we ordered." If they wrote in Spanish, rewrite it in clean English. Empty string if the shop sent no text.
+- summary: ONE short plain sentence for the owner's to-do list, naming the shop and what happened, e.g. "Quick Stop Deli got 3 cases of Dr Pepper instead of 5." or "Corner Market paid $28.00 less than their bill." No advice, no amounts unless they are the point.
+- reasoning: 2 to 4 short, plain sentences a busy shop owner can read in 10 seconds. Speak to the owner about the shop as "they" ("They got 3 cases instead of 5. Our packing scan agrees: only 3 went in the box."). Say what happened, not what someone "says" happened, unless the sources disagree. No jargon like "invoice", "credit", "credit note", "SKU" or "dispute"; say "bill", "item", "problem". If the bill is not paid yet, say "take $X off"; only say "refund" when they have already paid.
 - evidenceRefs: point to the exact records (type = packing_check | transcript_segment | order | order_event | payment | invoice | dispute | photo) with ids from the evidence and a short detail.
 When unsure, escalate.`;
 
@@ -184,17 +191,23 @@ const TOOL = {
   input_schema: {
     type: "object",
     properties: {
+      summary: { type: "string" },
+      shopMessageClean: { type: "string" },
+      relevance: { type: "string", enum: ["ok", "partly", "not_about_order"] },
       claimedItems: { type: "array", items: { type: "object", properties: { sku: { type: "string" }, qty: { type: "number" }, reason: { type: "string" } }, required: ["sku", "qty", "reason"] } },
       recommendation: { type: "string", enum: RECOMMENDATIONS },
       amountCents: { type: "integer" },
       reasoning: { type: "string" },
       evidenceRefs: { type: "array", items: { type: "object", properties: { type: { type: "string" }, id: { type: "string" }, detail: { type: "string" } }, required: ["type", "id", "detail"] } },
     },
-    required: ["claimedItems", "recommendation", "amountCents", "reasoning", "evidenceRefs"],
+    required: ["relevance", "summary", "shopMessageClean", "claimedItems", "recommendation", "amountCents", "reasoning", "evidenceRefs"],
   },
 };
 
 type Analysis = {
+  relevance?: string;
+  summary?: string;
+  shopMessageClean?: string;
   claimedItems: { sku: string; qty: number; reason: string }[];
   recommendation: Recommendation;
   amountCents: number;
@@ -271,7 +284,34 @@ export const analyzeDispute = internalAction({
         analysis = { claimedItems: [], recommendation: "escalate", amountCents: 0, source: "error", reasoning: `Automatic analysis failed (${msg.slice(0, 120)}). Escalating to the owner rather than guessing.`, evidenceRefs: [] };
       }
     }
-    await ctx.runMutation(internal.disputes.applyAnalysis, { disputeId, ...analysis });
+    // Pass only known fields with the right types: the model can add extra keys or nulls,
+    // and one bad field must never leave a problem stuck on "checking…".
+    const str = (x: unknown) => (typeof x === "string" ? x : "");
+    const clean = {
+      disputeId,
+      claimedItems: (Array.isArray(analysis.claimedItems) ? analysis.claimedItems : [])
+        .filter((c) => c && typeof c.sku === "string")
+        .map((c) => ({ sku: c.sku, qty: Number(c.qty) || 0, reason: str(c.reason) })),
+      recommendation: str(analysis.recommendation) || "escalate",
+      amountCents: Number(analysis.amountCents) || 0,
+      reasoning: str(analysis.reasoning) || "No explanation was given.",
+      evidenceRefs: (Array.isArray(analysis.evidenceRefs) ? analysis.evidenceRefs : [])
+        .filter((r) => r && r.id !== undefined)
+        .map((r) => ({ type: str(r.type) || "note", id: String(r.id), detail: str(r.detail) })),
+      source: str(analysis.source) || "unknown",
+      summary: str(analysis.summary) || undefined,
+      shopMessageClean: str(analysis.shopMessageClean) || undefined,
+      relevance: str(analysis.relevance) || undefined,
+    };
+    try {
+      await ctx.runMutation(internal.disputes.applyAnalysis, clean);
+    } catch (err) {
+      console.error(`[disputes] could not save analysis: ${err instanceof Error ? err.message : String(err)}`);
+      await ctx.runMutation(internal.disputes.applyAnalysis, {
+        ...clean, recommendation: "escalate", amountCents: 0, claimedItems: [], evidenceRefs: [],
+        reasoning: "The C2C AI Assistant's answer couldn't be saved, so this needs your eyes.",
+      });
+    }
   },
 });
 
@@ -289,6 +329,9 @@ export const applyAnalysis = internalMutation({
     recommendation: v.string(),
     amountCents: v.number(),
     reasoning: v.string(),
+    summary: v.optional(v.string()),
+    shopMessageClean: v.optional(v.string()),
+    relevance: v.optional(v.string()),
     evidenceRefs: v.array(v.object({ type: v.string(), id: v.string(), detail: v.string() })),
     source: v.string(),
   },
@@ -300,6 +343,24 @@ export const applyAnalysis = internalMutation({
     const order = (await ctx.db.get(d.orderId))!;
     const shop = (await ctx.db.get(d.shopId))!;
     const notes: string[] = [];
+
+    // Junk that isn't about the order (spam, abuse, gibberish): close it, don't bother the owner,
+    // and ask the shop politely what was actually wrong.
+    if (a.relevance === "not_about_order" && d.requestedBy === "shop") {
+      await ctx.db.patch(d._id, { status: "rejected", decidedBy: "rule:not_about_the_order", decidedAt: now, recommendation: "reject_with_evidence", amountCents: 0, reasoning: "This message wasn't about the order, so it was closed automatically.", summary: `${shop.name} sent a message that wasn't about their order.`, evidenceRefs: a.evidenceRefs });
+      const others = await ctx.db.query("disputes").withIndex("by_invoiceId", (q) => q.eq("invoiceId", inv._id)).collect();
+      if (!others.some((x) => x._id !== d._id && (x.status === "open" || x.status === "awaiting_approval"))) {
+        const paidSoFar = (await ctx.db.query("payments").withIndex("by_invoiceId", (q) => q.eq("invoiceId", inv._id)).collect()).reduce((t, p) => t + p.amountCents, 0);
+        await ctx.db.patch(inv._id, { status: invoiceStatusAfter(inv.balanceCents, paidSoFar, false) });
+        if (inv.balanceCents > 0) await scheduleInvoiceReminders(ctx, (await ctx.db.get(inv._id))!, now, { resume: true });
+      }
+      const body = shop.language === "es"
+        ? `No entendimos su mensaje sobre el pedido ${shortId(order._id)}. Si faltó algo o llegó dañado, díganos qué producto y cuántas cajas.`
+        : `We couldn't understand your message about order ${shortId(order._id)}. If something was missing or damaged, please tell us which item and how many cases.`;
+      await ctx.scheduler.runAfter(0, internal.messaging.sendSms, { to: shop.phone, body, relatedType: "dispute", relatedId: d._id });
+      await ctx.db.insert("auditLog", { actor: "system", action: "dispute_closed_not_about_order", entityType: "dispute", entityId: d._id, reason: `${shop.name}'s text wasn't about the order, so it was closed without bothering the owner, and the shop was asked what was actually wrong.`, at: now });
+      return;
+    }
 
     // Validate the model's output. Unknown outcome -> escalate.
     let rec: Recommendation = (RECOMMENDATIONS as string[]).includes(a.recommendation) ? (a.recommendation as Recommendation) : "escalate";
@@ -321,7 +382,7 @@ export const applyAnalysis = internalMutation({
     if ((rec === "credit" || rec === "cash_refund") && amount === 0) { notes.push("money outcome with no amount; escalated"); rec = "escalate"; }
 
     const reasoning = notes.length ? `${a.reasoning}\n[Checks: ${notes.join("; ")}.]` : a.reasoning;
-    await ctx.db.patch(d._id, { claimedItems, recommendation: rec, amountCents: amount, reasoning, evidenceRefs: a.evidenceRefs, status: "awaiting_approval" });
+    await ctx.db.patch(d._id, { claimedItems, recommendation: rec, amountCents: amount, reasoning, summary: a.summary?.trim() || undefined, shopMessageClean: a.shopMessageClean?.trim() || undefined, evidenceRefs: a.evidenceRefs, status: "awaiting_approval" });
     await ctx.db.insert("auditLog", {
       actor: "agent", action: "dispute_recommendation", entityType: "dispute", entityId: d._id,
       reason: `Recommended ${rec}${amount ? ` ${usd(amount)}` : ""} (by ${a.source}). ${a.reasoning.slice(0, 300)}`,
@@ -350,6 +411,12 @@ export const applyAnalysis = internalMutation({
 });
 
 // --------------------------------------------------------------------------- decisions
+
+/** Is another problem on this bill still waiting? Then the bill stays on hold. */
+async function otherOpenOnInvoice(ctx: QueryCtx, invoiceId: Id<"invoices">, except: Id<"disputes">): Promise<boolean> {
+  const all = await ctx.db.query("disputes").withIndex("by_invoiceId", (q) => q.eq("invoiceId", invoiceId)).collect();
+  return all.some((x) => x._id !== except && (x.status === "open" || x.status === "awaiting_approval"));
+}
 
 function invoiceStatusAfter(balance: number, paid: number, credited: boolean): Doc<"invoices">["status"] {
   if (balance === 0) return credited ? "credited" : "paid";
@@ -404,7 +471,7 @@ async function executeDecision(ctx: MutationCtx, disputeId: Id<"disputes">, deci
     await postEntryGroup(ctx, pair("sales_returns", "cash", amount), "dispute", d._id, `SIMULATED cash refund for order ${ref} (no real money moved)`, now);
     sms = es ? `Pedido ${ref}: le reembolsaremos ${usd(amount)}${items ? ` por ${items}` : ""}.` : `Order ${ref}: we're refunding ${usd(amount)}${items ? ` for ${items}` : ""}.`;
   } else if (outcome === "replacement") {
-    await ctx.db.insert("auditLog", { actor: "system", action: "replacement_shipment_logged", entityType: "dispute", entityId: d._id, reason: `Replacement approved for order ${ref}${items ? `: ${items}` : ""}. No ledger entry (inventory is not tracked in this demo).`, at: now });
+    await ctx.db.insert("auditLog", { actor: "system", action: "replacement_shipment_logged", entityType: "dispute", entityId: d._id, reason: `Replacement approved for order ${ref}${items ? `: ${items}` : ""}. No ledger entry (inventory is not tracked yet).`, at: now });
     sms = es ? `Pedido ${ref}: le enviaremos el reemplazo${items ? ` de ${items}` : ""} en la próxima entrega.` : `Order ${ref}: we'll send a replacement${items ? ` for ${items}` : ""} on the next delivery.`;
   } else if (outcome === "reject_with_evidence") {
     const ev = await evidenceText(ctx, d, order);
@@ -414,8 +481,9 @@ async function executeDecision(ctx: MutationCtx, disputeId: Id<"disputes">, deci
   }
 
   await ctx.db.patch(d._id, { status: "approved", recommendation: outcome, amountCents: amount, decidedBy, decidedAt: now });
-  await ctx.db.patch(inv._id, { balanceCents: balance, status: invoiceStatusAfter(balance, paid, credited) });
-  if (balance > 0) await scheduleInvoiceReminders(ctx, (await ctx.db.get(inv._id))!, now, { resume: true });
+  const otherOpen = await otherOpenOnInvoice(ctx, inv._id, d._id);
+  await ctx.db.patch(inv._id, { balanceCents: balance, status: otherOpen ? "disputed" : invoiceStatusAfter(balance, paid, credited) });
+  if (balance > 0 && !otherOpen) await scheduleInvoiceReminders(ctx, (await ctx.db.get(inv._id))!, now, { resume: true });
   await ctx.scheduler.runAfter(0, internal.messaging.sendSms, { to: shop.phone, body: sms, relatedType: "dispute", relatedId: d._id });
   await ctx.db.insert("auditLog", {
     actor: decidedBy === "owner" ? "owner" : "system", action: `dispute_approved_${outcome}`, entityType: "dispute", entityId: d._id,
@@ -453,8 +521,9 @@ export const decide = mutation({
     const inv = (await ctx.db.get(d.invoiceId))!;
     const paid = (await ctx.db.query("payments").withIndex("by_invoiceId", (q) => q.eq("invoiceId", inv._id)).collect()).reduce((s, p) => s + p.amountCents, 0);
     await ctx.db.patch(d._id, { status: "rejected", decidedBy, decidedAt: now });
-    await ctx.db.patch(inv._id, { status: invoiceStatusAfter(inv.balanceCents, paid, false) });
-    if (inv.balanceCents > 0) await scheduleInvoiceReminders(ctx, (await ctx.db.get(inv._id))!, now, { resume: true });
+    const otherOpen = await otherOpenOnInvoice(ctx, inv._id, d._id);
+    await ctx.db.patch(inv._id, { status: otherOpen ? "disputed" : invoiceStatusAfter(inv.balanceCents, paid, false) });
+    if (inv.balanceCents > 0 && !otherOpen) await scheduleInvoiceReminders(ctx, (await ctx.db.get(inv._id))!, now, { resume: true });
     await ctx.db.insert("auditLog", { actor: "owner", action: "dispute_rejected", entityType: "dispute", entityId: d._id, reason: `Owner rejected the recommendation (${d.recommendation ?? "none"}). ${note ?? ""}`.trim(), at: now });
   },
 });

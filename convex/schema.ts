@@ -14,6 +14,8 @@ export default defineSchema({
     language: v.string(), // "en" | "es" | other
     paymentTermsDays: v.number(),
     autoApproveLimitCents: v.number(),
+    trackRecordSummary: v.optional(v.string()), // C2C AI summary of the shop's history (Amaan)
+    trackRecordAt: v.optional(v.number()),
   }).index("by_phone", ["phone"]),
 
   calls: defineTable({
@@ -181,6 +183,8 @@ export default defineSchema({
       ),
     ),
     reasoning: v.optional(v.string()),
+    summary: v.optional(v.string()), // one plain line for the owner's to-do list (Amaan)
+    shopMessageClean: v.optional(v.string()), // the shop's latest text, rewritten in clean English, same meaning (Amaan)
     evidenceRefs: v.array(v.object({ type: v.string(), id: v.string(), detail: v.string() })),
     amountCents: v.number(),
     status: v.union(
