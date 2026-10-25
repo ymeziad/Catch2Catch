@@ -1,0 +1,6 @@
+[
+  { "sku": "COKE-12OZ-24", "brand": "Coca-Cola", "name": "Coca-Cola Classic 12 oz can", "unit": "case", "unitsPerCase": 24, "aliases": ["coke", "coca cola", "cokes", "coca-cola cans", "coca cola 12 ounce"], "barcode": "049000006346", "priceWholesaleDollars": 14.5 },
+  { "sku": "DRP-12OZ-24", "brand": "Dr Pepper", "name": "Dr Pepper 12 oz can", "unit": "case", "unitsPerCase": 24, "aliases": ["dr pepper", "doctor pepper", "dr. pepper", "pepper"], "barcode": "078000082401", "priceWholesaleDollars": 14.0 },
+  { "sku": "HORCH-1L-12", "brand": "Casa Fresca", "name": "Horchata 1 L carton", "unit": "case", "unitsPerCase": 12, "aliases": ["horchata", "orchata", "rice drink", "horchata cartons"], "barcode": "810000000012", "priceWholesaleDollars": 22.0 },
+  { "sku": "CELS-12OZ-12", "brand": "Celsius", "name": "Celsius Sparkling Orange 12 oz can", "unit": "case", "unitsPerCase": 12, "aliases": ["celsius", "celsius orange", "energy drink", "celsius cans"], "barcode": "889392000016", "priceWholesaleDollars": 21.0 }
+]
