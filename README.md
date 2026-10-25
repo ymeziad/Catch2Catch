@@ -2,7 +2,9 @@
 
 **An AI "order witness" and back office for small US wholesale drink distributors and the restaurants and corner shops they supply.** Built at Cal Hacks 13.0.
 
-Orders between small distributors and small shops are agreed by phone, fast, and nobody writes them down. When the warehouse ships short or wrong, neither side has proof of what was agreed or what was packed. Catch2Catch records the call (with both parties' consent), transcribes each speaker separately, has Claude extract the order, gets both sides to confirm by text, checks the packing against the order, and keeps every piece of evidence for when a dispute comes in.
+**Live site:** https://catch2catch.vercel.app/today · **Demo video plan:** [DEMO.md](DEMO.md)
+
+Orders between small distributors and small shops are agreed by phone, fast, and nobody writes them down. When the warehouse ships short or wrong, neither side has proof of what was agreed or what was packed. Catch2Catch records the call (with both parties' consent), transcribes each speaker separately, has Claude extract the order, sends both sides the same WhatsApp summary, checks the packing against the order, and keeps every piece of evidence for when a dispute comes in.
 
 ## How it works
 
