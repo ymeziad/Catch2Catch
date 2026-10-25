@@ -29,7 +29,7 @@ export function ProblemView() {
   if (data === undefined) return <p className="text-ink/60">{t("Loading…")}</p>;
   if (data === null) return <p className="text-ink/60">{t("We couldn’t find this problem.")}</p>;
 
-  const { dispute: d, invoice, order, shop, packing, photos, segments, payments, history, audit } = data;
+  const { dispute: d, invoice, order, shop, packing, photos, linePhotos, segments, payments, history, audit } = data;
   const pending = d.status === "open" || d.status === "awaiting_approval";
   const thinking = d.status === "open" && !d.recommendation;
   const unsure = d.recommendation === "escalate";
@@ -199,7 +199,21 @@ export function ProblemView() {
             <p className="mt-2 text-ink/70">
               {latestPack ? t("Scanned by {name} on {date}.", { name: latestPack.packerName, date: when(latestPack.checkedAt) }) : t("Nobody scanned the boxes for this order.")}
             </p>
-            {photos.length > 0 && (
+            {linePhotos.length > 0 ? (
+              // One photo per item, labeled with what it should show ("Dr Pepper 12 oz can × 5").
+              <div className="mt-4 flex flex-wrap gap-4">
+                {linePhotos.map((p) => {
+                  const line = order.lines.find((l) => l.sku === p.sku);
+                  return (
+                    <a key={p.url} href={p.url} target="_blank" rel="noopener" className="w-32">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.url} alt={t("Photo of {name}", { name: line?.description ?? p.sku })} className={`h-32 w-32 rounded-lg object-cover ring-1 ${claimed.has(p.sku) ? "ring-2 ring-sun" : "ring-line"}`} />
+                      <span className="mt-1 block text-sm leading-snug text-ink/60">{line?.description ?? p.sku} × {line?.qty ?? "?"}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            ) : photos.length > 0 && (
               <div className="mt-4 flex gap-3">
                 {photos.map((p, i) => p.url && (
                   // eslint-disable-next-line @next/next/no-img-element

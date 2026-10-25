@@ -30,7 +30,6 @@ export default function Home() {
       </section>
       <section className="flex gap-3 text-sm">
         <Link href="/calls" className="rounded-md bg-zinc-900 text-white px-4 py-2">View calls</Link>
-        <Link href="/admin/upload" className="rounded-md border px-4 py-2 bg-white">Run pipeline on an upload</Link>
       </section>
     </div>
   );

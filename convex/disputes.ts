@@ -156,7 +156,8 @@ function evidenceForModel(e: Evidence) {
     packingChecks: e.packing.map((p) => ({
       id: p._id, at: pt(p.checkedAt), packer: p.packerName, result: p.result,
       scannedBySku: p.scans.reduce<Record<string, number>>((acc, s) => { const k = s.sku ?? `barcode:${s.barcode}`; acc[k] = (acc[k] ?? 0) + s.qty; return acc; }, {}),
-      mismatches: p.mismatches, photoCount: p.photoFileIds.length, photoIds: p.photoFileIds, override: p.overrideBy ? { by: p.overrideBy, reason: p.overrideReason } : undefined,
+      mismatches: p.mismatches, photoCount: p.photoFileIds.length, photoIds: p.photoFileIds,
+      photoPerItem: (p.linePhotos ?? []).map((lp) => ({ sku: lp.sku, photoId: lp.fileId })), override: p.overrideBy ? { by: p.overrideBy, reason: p.overrideReason } : undefined,
     })),
     invoice: { id: e.invoice._id, amountCents: e.invoice.amountCents, balanceCents: e.invoice.balanceCents, dueAt: pt(e.invoice.dueAt) },
     payments: e.payments.map((p) => ({ id: p._id, amountCents: p.amountCents, method: p.method, at: pt(p.receivedAt) })),
@@ -172,6 +173,7 @@ Rules:
 - Trust the packing scan over the shop's claim when the scan matched the order AND a photo exists. Then recommend reject_with_evidence.
 - Trust the shop's claim when the packing check shows a mismatch for the claimed item, or when no packing check exists (but escalate if the amount is large relative to the order or the shop has several recent disputes).
 - Damaged goods can't be seen in a barcode scan: if the shop credibly reports damage and the packing check doesn't contradict it, credit or replacement is reasonable; with a history of repeat claims, escalate.
+- photoPerItem means the packer photographed that item's full count together (e.g. all 5 cases of Dr Pepper in one shot). A per-item photo for the claimed item, plus a matching scan, is strong proof the right amount was sent.
 - Price disagreements: compare the invoiced price with what the transcript/negotiation shows was agreed. If the transcript clearly supports the shop's price, credit the difference; if it supports ours, reject_with_evidence; if unclear, escalate.
 - A short payment with no message and no packing mismatch: escalate (ask the owner to call), do not guess.
 - When sources disagree, name both sources and what each says.
@@ -565,10 +567,13 @@ export const detail = query({
     const packing = await ctx.db.query("packingChecks").withIndex("by_orderId", (q) => q.eq("orderId", order._id)).collect();
     const photos: { checkId: string; url: string | null }[] = [];
     for (const p of packing) for (const f of p.photoFileIds) photos.push({ checkId: p._id, url: await ctx.storage.getUrl(f) });
+    const latestCheck = [...packing].sort((a, b) => b.checkedAt - a.checkedAt)[0];
+    const linePhotos: { sku: string; url: string }[] = [];
+    for (const lp of latestCheck?.linePhotos ?? []) { const url = await ctx.storage.getUrl(lp.fileId); if (url) linePhotos.push({ sku: lp.sku, url }); }
     const segments = await ctx.db.query("transcriptSegments").withIndex("by_callId", (q) => q.eq("callId", order.callId)).take(150);
     const payments = await ctx.db.query("payments").withIndex("by_invoiceId", (q) => q.eq("invoiceId", inv._id)).collect();
     const history = await otherRecentDisputes(ctx, shop._id, d._id);
     const audit = await ctx.db.query("auditLog").withIndex("by_entity", (q) => q.eq("entityType", "dispute").eq("entityId", d._id)).collect();
-    return { dispute: d, invoice: inv, order, shop, packing, photos, segments, payments, history, audit, orderRef: shortId(order._id), autoRule: AUTO_RULE };
+    return { dispute: d, invoice: inv, order, shop, packing, photos, linePhotos, segments, payments, history, audit, orderRef: shortId(order._id), autoRule: AUTO_RULE };
   },
 });

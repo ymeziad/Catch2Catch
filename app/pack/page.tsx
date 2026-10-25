@@ -5,20 +5,16 @@ import Link from "next/link";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { BarcodeScanner } from "./BarcodeScanner";
+import { when } from "@/components/money";
+import { t } from "@/components/i18n";
 
 function usd(cents: number | undefined) {
   return cents === undefined ? "—" : `$${(cents / 100).toFixed(2)}`;
 }
 
-const RESULT_STYLE: Record<string, string> = {
-  match: "bg-emerald-100 text-emerald-800",
-  override: "bg-amber-100 text-amber-800",
-  mismatch: "bg-red-100 text-red-800",
-};
-
 export default function PackingHome() {
   return (
-    <div className="space-y-10">
+    <div className="space-y-14">
       <Queue />
       <Catalog />
     </div>
@@ -27,25 +23,34 @@ export default function PackingHome() {
 
 function Queue() {
   const rows = useQuery(api.orders.packingQueue, {});
+  const word = (r: { latestResult: string | null }) =>
+    r.latestResult === "match" ? { text: t("Ready to ship"), cls: "text-teal" }
+    : r.latestResult === "override" ? { text: t("Shipped anyway"), cls: "text-wait" }
+    : r.latestResult === "mismatch" ? { text: t("Didn’t match"), cls: "text-red-700" }
+    : { text: t("Not packed yet"), cls: "text-ink/50" };
   return (
     <section>
-      <h1 className="text-2xl font-semibold">Packing</h1>
-      <p className="mt-1 text-sm text-zinc-600">Open an order on your phone, scan every item, photograph the box, submit.</p>
-      <div className="mt-4 divide-y rounded-lg border bg-white">
-        {rows === undefined && <p className="p-4 text-sm text-zinc-500">Loading…</p>}
-        {rows?.length === 0 && <p className="p-4 text-sm text-zinc-500">No orders waiting to be packed.</p>}
-        {rows?.map((r) => (
-          <Link key={r.orderId} href={`/pack/${r.orderId}`} className="flex items-center justify-between p-4 hover:bg-zinc-50">
-            <div>
-              <div className="font-medium">Order #{r.ref}</div>
-              <div className="text-xs text-zinc-500">{r.lineCount} line(s) · {r.status} · {new Date(r.createdAt).toLocaleString()}</div>
-            </div>
-            <span className={`rounded px-2 py-0.5 text-xs ${r.latestResult ? RESULT_STYLE[r.latestResult] : "bg-zinc-100 text-zinc-600"}`}>
-              {r.latestResult ?? "not packed"}
-            </span>
-          </Link>
-        ))}
-      </div>
+      <h1 className="text-3xl leading-snug">{t("Packing")}</h1>
+      <p className="mt-2 text-lg text-ink/60">{t("Open an order on your phone, scan every case, take a photo of each item, and check the box.")}</p>
+      {rows === undefined && <p className="mt-6 text-lg text-ink/60">{t("Loading…")}</p>}
+      {rows?.length === 0 && <p className="mt-6 text-lg text-ink/60">{t("No orders waiting to be packed.")}</p>}
+      <ul className="mt-6 divide-y divide-line border-y-2 border-line text-lg">
+        {rows?.map((r) => {
+          const w = word(r);
+          return (
+            <li key={r.orderId}>
+              <Link href={`/pack/${r.orderId}`} className="group grid items-baseline gap-x-6 gap-y-1 py-4 sm:grid-cols-[9rem_1fr_9rem]">
+                <span className="whitespace-nowrap text-base text-ink/50">{when(r.createdAt)}</span>
+                <span className="underline-offset-4 group-hover:underline">
+                  {t("Order #{ref}", { ref: r.ref })}
+                  <span className="text-base text-ink/50"> · {r.lineCount === 1 ? t("1 item") : t("{n} items", { n: r.lineCount })}</span>
+                </span>
+                <span className={`text-base sm:text-right ${w.cls}`}>{w.text}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }

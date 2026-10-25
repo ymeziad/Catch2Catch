@@ -1027,6 +1027,8 @@ export const getForPacking = query({
         ...c,
         problems: c.mismatches.map((m) => describeMismatch(m, names)),
         photoUrls: (await Promise.all(c.photoFileIds.map((id) => ctx.storage.getUrl(id)))).filter((u): u is string => u !== null),
+        linePhotoUrls: (await Promise.all((c.linePhotos ?? []).map(async (lp) => ({ sku: lp.sku, url: await ctx.storage.getUrl(lp.fileId) }))))
+          .filter((x): x is { sku: string; url: string } => x.url !== null),
       })),
     );
     return {
@@ -1057,13 +1059,21 @@ export const submitPackingCheck = mutation({
     packerName: v.string(),
     scans: v.array(v.object({ barcode: v.string(), qty: v.number() })),
     photoFileIds: v.array(v.id("_storage")),
+    linePhotos: v.optional(v.array(v.object({ sku: v.string(), fileId: v.id("_storage") }))),
   },
-  handler: async (ctx, { orderId, packerName, scans, photoFileIds }) => {
+  handler: async (ctx, { orderId, packerName, scans, photoFileIds: wholeOrderPhotos, linePhotos }) => {
     const order = await ctx.db.get(orderId);
     if (!order) throw new Error("Order not found");
     if (UNPACKABLE.has(order.status)) throw new Error(`Order is ${order.status}; there is nothing to pack`);
     const packer = packerName.trim();
     if (!packer) throw new Error("Packer name is required");
+    // Every item line needs its own photo (e.g. the 5 Dr Pepper cases together) when per-item photos are sent.
+    if (linePhotos) {
+      const lineNames = new Map(order.lines.map((l) => [l.sku, l.description]));
+      const missingPhoto = [...expectedBySku(order).keys()].filter((sku) => !linePhotos.some((lp) => lp.sku === sku));
+      if (missingPhoto.length) throw new Error(`Add a photo of: ${missingPhoto.map((sku) => lineNames.get(sku) ?? sku).join(", ")}`);
+    }
+    const photoFileIds = [...wholeOrderPhotos, ...(linePhotos ?? []).map((lp) => lp.fileId)];
     if (photoFileIds.length === 0) throw new Error("At least one photo of the packed order is required");
 
     const catalog = await loadCatalog(ctx);
@@ -1098,6 +1108,7 @@ export const submitPackingCheck = mutation({
       packerName: packer,
       scans: stored,
       photoFileIds,
+      linePhotos,
       result,
       mismatches,
       checkedAt: await demoNow(ctx),
@@ -1116,7 +1127,8 @@ export const submitPackingCheck = mutation({
           : `${packer} scanned ${totalScanned}/${totalExpected} items: ${problems.join("; ")}. Not ready to ship.`,
       evidenceRefs: [
         { type: "packingCheck", id: checkId },
-        ...photoFileIds.map((id) => ({ type: "photo", id, detail: "packed order photo" })),
+        ...wholeOrderPhotos.map((id) => ({ type: "photo", id, detail: "packed order photo" })),
+        ...(linePhotos ?? []).map((lp) => ({ type: "photo", id: lp.fileId, detail: `photo of ${names.get(lp.sku) ?? lp.sku}` })),
       ],
     });
     return { checkId, result, problems, readyToShip: result === "match" };

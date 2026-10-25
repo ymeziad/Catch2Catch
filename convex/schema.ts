@@ -132,6 +132,8 @@ export default defineSchema({
       v.object({ barcode: v.string(), sku: v.optional(v.string()), qty: v.number() }),
     ),
     photoFileIds: v.array(v.id("_storage")),
+    // One photo per item line (e.g. the 5 Dr Pepper cases together), so each count has its own proof.
+    linePhotos: v.optional(v.array(v.object({ sku: v.string(), fileId: v.id("_storage") }))),
     result: v.union(v.literal("match"), v.literal("mismatch"), v.literal("override")),
     mismatches: v.array(
       v.object({ sku: v.string(), expectedQty: v.number(), scannedQty: v.number() }),

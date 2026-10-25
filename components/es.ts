@@ -2,7 +2,7 @@
 export const ES: Record<string, string> = {
   // menu
   "Today": "Hoy", "Bills": "Facturas", "Problems": "Problemas", "Reminders": "Avisos", "Calls": "Llamadas", "Texts": "Mensajes",
-  "More": "Más", "Books": "Libros", "History": "Historial", "Upload a call": "Subir una llamada",
+  "More": "Más", "Books": "Libros", "History": "Historial", "Packing": "Empaque",
 
   // shared
   "Loading…": "Cargando…", "Back": "Volver", "Save": "Guardar", "Never mind": "Mejor no", "OK": "Entendido", "Confirm": "Confirmar", "Cancel": "Cancelar",
@@ -111,4 +111,28 @@ export const ES: Record<string, string> = {
   "looked into a problem and suggested a fix": "revisó un problema y sugirió una solución",
   "fixed a small problem on its own": "arregló un problema pequeño por su cuenta",
   "updated an order a shop changed": "actualizó un pedido que cambió una tienda",
+
+  // packing
+  "We couldn’t find this order.": "No encontramos este pedido.", "Pack order #{ref}": "Empacar pedido #{ref}", "Order #{ref}": "Pedido #{ref}",
+  "Confirmed by both sides.": "Confirmado por ambas partes.", "The shop hasn’t confirmed this order yet.": "La tienda todavía no ha confirmado este pedido.",
+  "There’s nothing to pack for this order.": "No hay nada que empacar en este pedido.", "Already checked and ready to ship.": "Ya revisado y listo para enviar.",
+  "It matches the order.": "Coincide con el pedido.", "Ready to ship. The scans and photos are saved as proof.": "Listo para enviar. Los escaneos y las fotos quedan guardados como prueba.",
+  "Shipping as packed.": "Se envía como está empacado.", "The difference and the reason are on record.": "La diferencia y el motivo quedan registrados.",
+  "Don’t ship this yet.": "Todavía no lo envíe.", "Fix the box and check again, or the owner can ship it anyway with a reason.": "Arregle la caja y revise otra vez, o el dueño puede enviarlo de todos modos con un motivo.",
+  "Owner: ship it anyway": "Dueño: enviarlo de todos modos", "Owner name": "Nombre del dueño", "Ship it anyway": "Enviarlo de todos modos",
+  "Reason (for example: the shop agreed by phone to take 4 cases)": "Motivo (por ejemplo: la tienda aceptó por teléfono llevar 4 cajas)",
+  "1. Scan every case": "1. Escanee cada caja", "Last scan:": "Último escaneo:", "Unknown barcode {code}": "Código desconocido {code}",
+  "2. Count and photograph each item": "2. Cuente y fotografíe cada producto",
+  "Put all the cases of one item together and take one photo that shows them all.": "Junte todas las cajas de un producto y tome una foto donde se vean todas.",
+  "Not part of this order": "No es parte de este pedido", "This order has no items.": "Este pedido no tiene productos.",
+  "3. Check and finish": "3. Revisar y terminar", "Your name": "Su nombre", "Checking…": "Revisando…", "Check the box": "Revisar la caja",
+  "Still needs a photo of: {items}": "Falta la foto de: {items}", "Add your name.": "Escriba su nombre.", "Saving the photo…": "Guardando la foto…", "Saving…": "Guardando…",
+  "Earlier checks": "Revisiones anteriores", "Matched": "Coincidió", "Shipped anyway": "Enviado de todos modos", "Didn’t match": "No coincidió",
+  "Shipped anyway by {name}: {reason}": "Enviado de todos modos por {name}: {reason}", "Packing photo": "Foto del empaque",
+  "Ordered {n}": "Pedido {n}", "Packed {n}": "Empacado {n}", "no barcode saved": "sin código guardado", "Retake": "Tomar otra",
+  "Photo of {name}": "Foto de {name}", "Remove photo": "Quitar foto", "Photo of the {n} {unit}": "Foto de los {n}",
+  "The photo didn’t upload. Check your signal and try again.": "La foto no se subió. Revise su señal e intente otra vez.",
+  "Ready to ship": "Listo para enviar", "Not packed yet": "Sin empacar", "No orders waiting to be packed.": "No hay pedidos esperando empaque.",
+  "Open an order on your phone, scan every case, take a photo of each item, and check the box.": "Abra un pedido en su teléfono, escanee cada caja, tome una foto de cada producto y revise la caja.",
+  "1 item": "1 producto", "{n} items": "{n} productos",
 };

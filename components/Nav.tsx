@@ -9,16 +9,16 @@ import { LangToggle, t } from "@/components/i18n";
 const links: [string, string][] = [
   ["/today", "Today"],
   ["/orders", "Orders"],
+  ["/pack", "Packing"],
   ["/invoices", "Bills"],
   ["/disputes", "Problems"],
   ["/reminders", "Reminders"],
   ["/calls", "Calls"],
-  ["/messages", "Texts"],
 ];
 const more: [string, string][] = [
+  ["/messages", "Texts"],
   ["/ledger", "Books"],
   ["/audit", "History"],
-  ["/admin/upload", "Upload a call"],
 ];
 
 export function Nav() {
