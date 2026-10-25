@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { celebrate } from "@/components/celebrate";
@@ -31,8 +31,12 @@ const statusBadge: Record<Doc<"orders">["status"], { word: string; tone: "go" | 
   cancelled: { word: "cancelled", tone: "plain" },
 };
 
+type CatalogItem = Doc<"catalogProducts">;
+
 export default function OrdersPage() {
   const data = useQuery(api.orderDesk.list, {});
+  const catalog = (useQuery(api.catalog.list, {}) ?? []) as CatalogItem[];
+  const market = new Map(catalog.map((p) => [p.sku, p]));
   const [err, setErr] = useState("");
   const rows = (data?.rows ?? []) as Row[];
   const waiting = rows.filter((r) => r.order.status === "verbal_agreement" || r.order.status === "needs_review");
@@ -51,7 +55,7 @@ export default function OrdersPage() {
         <SectionTitle>Waiting for you</SectionTitle>
         {data !== undefined && waiting.length === 0 && <p className="mt-4 text-lg text-ink/60">Nothing to confirm.</p>}
         <ul className="mt-4 divide-y divide-line">
-          {waiting.map((r) => <OrderRow key={r.order._id} row={r} shops={data?.shops ?? []} onError={setErr} />)}
+          {waiting.map((r) => <OrderRow key={r.order._id} row={r} shops={data?.shops ?? []} market={market} onError={setErr} />)}
         </ul>
       </section>
 
@@ -59,7 +63,7 @@ export default function OrdersPage() {
         <section>
           <SectionTitle>Confirmed</SectionTitle>
           <ul className="mt-4 divide-y divide-line">
-            {done.map((r) => <OrderRow key={r.order._id} row={r} shops={data?.shops ?? []} onError={setErr} />)}
+            {done.map((r) => <OrderRow key={r.order._id} row={r} shops={data?.shops ?? []} market={market} onError={setErr} />)}
           </ul>
         </section>
       )}
@@ -68,15 +72,58 @@ export default function OrdersPage() {
         <section>
           <SectionTitle>No deal</SectionTitle>
           <ul className="mt-4 divide-y divide-line">
-            {noDeal.map((r) => <OrderRow key={r.order._id} row={r} shops={data?.shops ?? []} onError={setErr} />)}
+            {noDeal.map((r) => <OrderRow key={r.order._id} row={r} shops={data?.shops ?? []} market={market} onError={setErr} />)}
           </ul>
         </section>
       )}
+
+      <MarketPrices catalog={catalog} onError={setErr} />
     </div>
   );
 }
 
-function OrderRow({ row, shops, onError }: { row: Row; shops: ShopOption[]; onError: (m: string) => void }) {
+/** Reference retail prices (Walmart, via Apify), so both sides can see what's reasonable. Information only. */
+function MarketPrices({ catalog, onError }: { catalog: CatalogItem[]; onError: (m: string) => void }) {
+  const refresh = useAction(api.prices.refreshNow);
+  const [busy, setBusy] = useState(false);
+  if (catalog.length === 0) return null;
+  const updated = Math.max(0, ...catalog.map((p) => p.priceUpdatedAt ?? 0));
+  return (
+    <section>
+      <SectionTitle>Market prices</SectionTitle>
+      <p className="mt-2 text-base text-ink/60">
+        Store prices from Walmart, for comparing what was agreed on a call. They never change an order.
+        {updated > 0 ? ` Updated ${new Date(updated).toLocaleString()}.` : " Not loaded yet."}
+      </p>
+      <ul className="mt-4 divide-y divide-line text-lg">
+        {catalog.map((p) => (
+          <li key={p.sku} className="flex flex-wrap items-center gap-x-6 py-3">
+            <span className="min-w-0 flex-1">{p.name} <span className="text-base text-ink/50">({p.unitsPerCase} per case)</span></span>
+            <span className="shrink-0 text-right">
+              {p.priceRetailRefCents !== undefined ? `${usd(p.priceRetailRefCents)} per case` : <span className="text-ink/40">no price yet</span>}
+            </span>
+            {p.priceRefSource && (
+              <a href={p.priceRefSource} target="_blank" rel="noopener" className="shrink-0 text-base text-teal underline-offset-4 hover:underline">listing</a>
+            )}
+          </li>
+        ))}
+      </ul>
+      <button
+        disabled={busy}
+        onClick={async () => {
+          onError("");
+          setBusy(true);
+          try { await refresh({}); } catch (e) { onError(cleanError(e)); } finally { setBusy(false); }
+        }}
+        className="btn mt-4 bg-white px-4 py-2 text-base"
+      >
+        {busy ? "Getting prices…" : "Refresh market prices"}
+      </button>
+    </section>
+  );
+}
+
+function OrderRow({ row, shops, market, onError }: { row: Row; shops: ShopOption[]; market: Map<string, CatalogItem>; onError: (m: string) => void }) {
   const { order } = row;
   const confirm = useMutation(api.orders.confirmManually);
   const [busy, setBusy] = useState(false);
@@ -110,6 +157,9 @@ function OrderRow({ row, shops, onError }: { row: Row; shops: ShopOption[]; onEr
             <li key={i}>
               {l.qty} {l.unit === "case" ? (l.qty === 1 ? "case" : "cases") : l.unit} {l.description}
               {l.unitPriceCents !== undefined && <span className="text-ink/60"> at {usd(l.unitPriceCents)}</span>}
+              {l.unit === "case" && market.get(l.sku)?.priceRetailRefCents !== undefined && (
+                <span className="text-base text-ink/45"> · store price {usd(market.get(l.sku)!.priceRetailRefCents)}/case</span>
+              )}
             </li>
           ))}
         </ul>

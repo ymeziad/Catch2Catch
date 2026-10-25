@@ -4,20 +4,49 @@
     "title": "Clean agreement, two items, seller quotes and buyer accepts",
     "language": "en",
     "segments": [
-      ["buyer", 0, "Hi, I need five cases of Dr Pepper and three cases of Celsius."],
-      ["seller", 4000, "Dr Pepper is fourteen dollars a case, and Celsius is twenty-one a case."],
-      ["buyer", 9000, "Okay. Five Dr Pepper at fourteen, three Celsius at twenty-one. That works."],
-      ["seller", 14000, "Great, I'll deliver Tuesday."],
-      ["buyer", 17000, "Tuesday is good, thanks."]
+      [
+        "buyer",
+        0,
+        "Hi, I need five cases of Dr Pepper and three cases of Celsius."
+      ],
+      [
+        "seller",
+        4000,
+        "Dr Pepper is fourteen dollars a case, and Celsius is twenty-one a case."
+      ],
+      [
+        "buyer",
+        9000,
+        "Okay. Five Dr Pepper at fourteen, three Celsius at twenty-one. That works."
+      ],
+      [
+        "seller",
+        14000,
+        "Great, I'll deliver Tuesday."
+      ],
+      [
+        "buyer",
+        17000,
+        "Tuesday is good, thanks."
+      ]
     ],
     "expect": {
-      "status": ["verbal_agreement"],
-      "lines": [
-        { "sku": "DRP-12OZ-24", "qty": 5, "unitPriceCents": 1400 },
-        { "sku": "CELS-12OZ-12", "qty": 3, "unitPriceCents": 2100 }
+      "status": [
+        "verbal_agreement"
       ],
-      "totalCents": 13300,
-      "priceFlagSkus": []
+      "lines": [
+        {
+          "sku": "DRP-12OZ-24",
+          "qty": 5,
+          "unitPriceCents": 1400
+        },
+        {
+          "sku": "CELS-12OZ-12",
+          "qty": 3,
+          "unitPriceCents": 2100
+        }
+      ],
+      "totalCents": 13300
     }
   },
   {
@@ -25,17 +54,44 @@
     "title": "Price negotiated down from $3.50 to $3.20 per carton, accepted",
     "language": "en",
     "segments": [
-      ["buyer", 0, "How much for the horchata cartons this week?"],
-      ["seller", 3000, "Three fifty a carton."],
-      ["buyer", 6000, "Can you do three twenty if I take twenty-four cartons?"],
-      ["seller", 10000, "Okay, three twenty a carton for twenty-four cartons."],
-      ["buyer", 13000, "Deal."]
+      [
+        "buyer",
+        0,
+        "How much for the horchata cartons this week?"
+      ],
+      [
+        "seller",
+        3000,
+        "Three fifty a carton."
+      ],
+      [
+        "buyer",
+        6000,
+        "Can you do three twenty if I take twenty-four cartons?"
+      ],
+      [
+        "seller",
+        10000,
+        "Okay, three twenty a carton for twenty-four cartons."
+      ],
+      [
+        "buyer",
+        13000,
+        "Deal."
+      ]
     ],
     "expect": {
-      "status": ["verbal_agreement"],
-      "lines": [{ "sku": "HORCH-1L-12", "qty": 24, "unitPriceCents": 320 }],
-      "totalCents": 7680,
-      "priceFlagSkus": []
+      "status": [
+        "verbal_agreement"
+      ],
+      "lines": [
+        {
+          "sku": "HORCH-1L-12",
+          "qty": 24,
+          "unitPriceCents": 320
+        }
+      ],
+      "totalCents": 7680
     }
   },
   {
@@ -43,17 +99,44 @@
     "title": "Quantity changed from 8 to 12 cases mid-call, accepted",
     "language": "en",
     "segments": [
-      ["buyer", 0, "Eight cases of Coke, please."],
-      ["seller", 3000, "Eight cases of Coke, fourteen fifty a case."],
-      ["buyer", 7000, "Actually, make it twelve cases."],
-      ["seller", 10000, "Twelve cases at fourteen fifty, got it."],
-      ["buyer", 13000, "Perfect."]
+      [
+        "buyer",
+        0,
+        "Eight cases of Coke, please."
+      ],
+      [
+        "seller",
+        3000,
+        "Eight cases of Coke, fourteen fifty a case."
+      ],
+      [
+        "buyer",
+        7000,
+        "Actually, make it twelve cases."
+      ],
+      [
+        "seller",
+        10000,
+        "Twelve cases at fourteen fifty, got it."
+      ],
+      [
+        "buyer",
+        13000,
+        "Perfect."
+      ]
     ],
     "expect": {
-      "status": ["verbal_agreement"],
-      "lines": [{ "sku": "COKE-12OZ-24", "qty": 12, "unitPriceCents": 1450 }],
-      "totalCents": 17400,
-      "priceFlagSkus": []
+      "status": [
+        "verbal_agreement"
+      ],
+      "lines": [
+        {
+          "sku": "COKE-12OZ-24",
+          "qty": 12,
+          "unitPriceCents": 1450
+        }
+      ],
+      "totalCents": 17400
     }
   },
   {
@@ -61,41 +144,109 @@
     "title": "Buyer counteroffers, seller refuses, buyer will call back",
     "language": "en",
     "segments": [
-      ["seller", 0, "Dr Pepper is fifteen dollars a case this week."],
-      ["buyer", 3500, "I'll take six cases if you go to thirteen."],
-      ["seller", 7000, "I can't go below fourteen fifty."],
-      ["buyer", 10500, "Then I need to think about it. I'll call you back."],
-      ["seller", 13500, "Okay, talk soon."]
+      [
+        "seller",
+        0,
+        "Dr Pepper is fifteen dollars a case this week."
+      ],
+      [
+        "buyer",
+        3500,
+        "I'll take six cases if you go to thirteen."
+      ],
+      [
+        "seller",
+        7000,
+        "I can't go below fourteen fifty."
+      ],
+      [
+        "buyer",
+        10500,
+        "Then I need to think about it. I'll call you back."
+      ],
+      [
+        "seller",
+        13500,
+        "Okay, talk soon."
+      ]
     ],
-    "expect": { "status": ["no_agreement"] }
+    "expect": {
+      "status": [
+        "no_agreement"
+      ]
+    }
   },
   {
     "key": "background_voice",
     "title": "Background voice on the buyer's line says a different quantity; seller's acceptance is ambiguous",
     "language": "en",
     "segments": [
-      ["buyer", 0, "Six cases of Coke at fourteen fifty."],
-      ["buyer", 2600, "make it twenty cases, tell him twenty", 0.55],
-      ["seller", 5000, "Okay, got it. See you Friday."]
+      [
+        "buyer",
+        0,
+        "Six cases of Coke at fourteen fifty."
+      ],
+      [
+        "buyer",
+        2600,
+        "make it twenty cases, tell him twenty",
+        0.55
+      ],
+      [
+        "seller",
+        5000,
+        "Okay, got it. See you Friday."
+      ]
     ],
-    "expect": { "status": ["needs_review"] }
+    "expect": {
+      "status": [
+        "needs_review"
+      ]
+    }
   },
   {
     "key": "spanish_order",
     "title": "Whole call in Spanish",
     "language": "es",
     "segments": [
-      ["buyer", 0, "Hola, necesito diez cajas de Coca-Cola de lata."],
-      ["seller", 3500, "Claro, la caja está a catorce con cincuenta."],
-      ["buyer", 7000, "Está bien, diez cajas a catorce cincuenta."],
-      ["seller", 10500, "Perfecto, se las llevo el jueves."],
-      ["buyer", 13000, "Gracias."]
+      [
+        "buyer",
+        0,
+        "Hola, necesito diez cajas de Coca-Cola de lata."
+      ],
+      [
+        "seller",
+        3500,
+        "Claro, la caja está a catorce con cincuenta."
+      ],
+      [
+        "buyer",
+        7000,
+        "Está bien, diez cajas a catorce cincuenta."
+      ],
+      [
+        "seller",
+        10500,
+        "Perfecto, se las llevo el jueves."
+      ],
+      [
+        "buyer",
+        13000,
+        "Gracias."
+      ]
     ],
     "expect": {
-      "status": ["verbal_agreement"],
-      "lines": [{ "sku": "COKE-12OZ-24", "qty": 10, "unitPriceCents": 1450 }],
+      "status": [
+        "verbal_agreement"
+      ],
+      "lines": [
+        {
+          "sku": "COKE-12OZ-24",
+          "qty": 10,
+          "unitPriceCents": 1450
+        }
+      ],
       "totalCents": 14500,
-      "priceFlagSkus": [],
       "smsStartsWith": "Pedido #"
     }
   },
@@ -104,16 +255,39 @@
     "title": "English and Spanish mixed in one call",
     "language": "es",
     "segments": [
-      ["buyer", 0, "Oye, I need cinco cajas de horchata."],
-      ["seller", 3000, "Horchata is twenty-two dollars la caja."],
-      ["buyer", 6000, "Ok, cinco a veintidós, dale."],
-      ["seller", 9000, "Listo, five cases of horchata, Monday."]
+      [
+        "buyer",
+        0,
+        "Oye, I need cinco cajas de horchata."
+      ],
+      [
+        "seller",
+        3000,
+        "Horchata is twenty-two dollars la caja."
+      ],
+      [
+        "buyer",
+        6000,
+        "Ok, cinco a veintidós, dale."
+      ],
+      [
+        "seller",
+        9000,
+        "Listo, five cases of horchata, Monday."
+      ]
     ],
     "expect": {
-      "status": ["verbal_agreement"],
-      "lines": [{ "sku": "HORCH-1L-12", "qty": 5, "unitPriceCents": 2200 }],
+      "status": [
+        "verbal_agreement"
+      ],
+      "lines": [
+        {
+          "sku": "HORCH-1L-12",
+          "qty": 5,
+          "unitPriceCents": 2200
+        }
+      ],
       "totalCents": 11000,
-      "priceFlagSkus": [],
       "smsStartsWith": "Pedido #"
     }
   },
@@ -122,39 +296,99 @@
     "title": "Agreed product is not in the catalog (Sprite)",
     "language": "en",
     "segments": [
-      ["buyer", 0, "Four cases of Sprite, the twelve ounce cans."],
-      ["seller", 3000, "Sprite is thirteen dollars a case."],
-      ["buyer", 6000, "Okay, four Sprite at thirteen."],
-      ["seller", 8500, "Done."]
+      [
+        "buyer",
+        0,
+        "Four cases of Sprite, the twelve ounce cans."
+      ],
+      [
+        "seller",
+        3000,
+        "Sprite is thirteen dollars a case."
+      ],
+      [
+        "buyer",
+        6000,
+        "Okay, four Sprite at thirteen."
+      ],
+      [
+        "seller",
+        8500,
+        "Done."
+      ]
     ],
-    "expect": { "status": ["needs_review", "no_agreement"] }
+    "expect": {
+      "status": [
+        "needs_review",
+        "no_agreement"
+      ]
+    }
   },
   {
     "key": "no_price_on_call",
     "title": "Quantity agreed but no price said on the call (must not use a list price)",
     "language": "en",
     "segments": [
-      ["buyer", 0, "Send me six cases of Dr Pepper."],
-      ["seller", 2500, "Sure, six cases. I'll bring them Friday."],
-      ["buyer", 5000, "Thanks."]
+      [
+        "buyer",
+        0,
+        "Send me six cases of Dr Pepper."
+      ],
+      [
+        "seller",
+        2500,
+        "Sure, six cases. I'll bring them Friday."
+      ],
+      [
+        "buyer",
+        5000,
+        "Thanks."
+      ]
     ],
-    "expect": { "status": ["needs_review"] }
+    "expect": {
+      "status": [
+        "needs_review"
+      ]
+    }
   },
   {
     "key": "price_above_retail",
     "title": "Agreed Celsius price is above the Walmart retail reference (price flag)",
     "language": "en",
     "segments": [
-      ["buyer", 0, "Two cases of Celsius orange."],
-      ["seller", 2500, "Celsius is thirty-two dollars a case."],
-      ["buyer", 5000, "Okay, two at thirty-two."],
-      ["seller", 7500, "Got it, Wednesday."]
+      [
+        "buyer",
+        0,
+        "Two cases of Celsius orange."
+      ],
+      [
+        "seller",
+        2500,
+        "Celsius is thirty-two dollars a case."
+      ],
+      [
+        "buyer",
+        5000,
+        "Okay, two at thirty-two."
+      ],
+      [
+        "seller",
+        7500,
+        "Got it, Wednesday."
+      ]
     ],
     "expect": {
-      "status": ["verbal_agreement"],
-      "lines": [{ "sku": "CELS-12OZ-12", "qty": 2, "unitPriceCents": 3200 }],
+      "status": [
+        "verbal_agreement"
+      ],
+      "lines": [
+        {
+          "sku": "CELS-12OZ-12",
+          "qty": 2,
+          "unitPriceCents": 3200
+        }
+      ],
       "totalCents": 6400,
-      "priceFlagSkus": ["CELS-12OZ-12"],
       "note": "Flag depends on the stored Walmart reference being below $32.00/case (it was $30.84 when written)."
     }
   }

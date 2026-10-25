@@ -2,7 +2,7 @@ import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { splitWavChannels } from "./lib/wav";
-import { transcribe, type Segment } from "./lib/stt";
+import { transcribe, transcribeChannel, type Segment } from "./lib/stt";
 
 type RoleSegment = { role: "buyer" | "seller"; startMs: number; endMs: number; text: string; confidence?: number };
 
@@ -29,8 +29,8 @@ export const transcribeCall = internalAction({
       const { info, channels } = splitWavChannels(buf);
       if (info.channels >= 2) {
         const [buyer, seller] = await Promise.all([
-          transcribe(new Blob([channels[0] as BlobPart], { type: "audio/wav" }), "buyer"),
-          transcribe(new Blob([channels[1] as BlobPart], { type: "audio/wav" }), "seller"),
+          transcribeChannel(channels[0], "buyer"),
+          transcribeChannel(channels[1], "seller"),
         ]);
         segments = [...withRole(buyer, "buyer"), ...withRole(seller, "seller")];
         note = `dual-channel: ${buyer.length} buyer + ${seller.length} seller segments`;

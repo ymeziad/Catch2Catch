@@ -13,7 +13,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { MAX_SMS_CHARS } from "./messaging";
 import { normalizePhone } from "./lib/phone";
 import { findByBarcode, loadCatalog } from "./catalog";
-import { priceFlagFor, type PriceFlag } from "./prices";
+import { type PriceFlag } from "./prices";
 
 /**
  * The order brain and the packing check.
@@ -335,7 +335,6 @@ export function priceStated(idx: NumberIndex, cents: number): boolean {
 // ------------------------------------------------------------------- validate + build the order
 
 const CASE_UNITS = new Set(["case", "cases", "cs", "caja", "cajas"]);
-const SINGLE_UNITS = new Set(["can", "cans", "bottle", "bottles", "carton", "cartons", "unit", "units", "each", "lata", "latas", "botella", "botellas"]);
 
 function normalizeUnit(unit: string): string {
   const u = stripAccents(unit.trim().toLowerCase());
@@ -367,68 +366,39 @@ export type BuiltOrder = {
  * needs_review, and so does any agreed line without a price said on the call (never a list price).
  * Totals are computed here, only for verbal agreements.
  */
-export function buildOrder(analysis: ModelAnalysis, segments: Segment[], catalog: CatalogItem[]): BuiltOrder {
+export function buildOrder(analysis: ModelAnalysis, _segments: Segment[], catalog: CatalogItem[]): BuiltOrder {
+  // Claude's reading of the call is the result. Code only shapes it: catalog names, units, line totals.
+  // Nothing here overrules Claude's status. Market prices are shown on the dashboard, not checked here.
   const bySku = new Map(catalog.map((p) => [p.sku, p]));
-  const numbers = indexNumbers(segments.map((s) => s.text));
-  const failures: string[] = [];
 
-  // A product with no catalog match isn't carried: it goes on the "currently not available" list
-  // instead of blocking the order (Claude is told to do this; this catches it if it doesn't).
+  // A product with no catalog match isn't carried: it goes on the "currently not available" list.
   const unavailable: UnavailableItem[] = analysis.unavailable.map((u) => ({ ...u, unit: normalizeUnit(u.unit) }));
   for (const l of analysis.lines) {
     if (!bySku.has(l.sku)) unavailable.push({ description: l.description, qty: l.qty > 0 ? l.qty : 0, unit: normalizeUnit(l.unit) });
   }
 
-  const lines: BuiltLine[] = analysis.lines.filter((l) => bySku.has(l.sku)).map((l) => {
-    const product = bySku.get(l.sku);
-    const label = product?.name ?? l.description;
-    const unit = normalizeUnit(l.unit);
-    const confidence = Math.min(1, Math.max(0, l.confidence));
+  const lines: BuiltLine[] = analysis.lines
+    .filter((l) => bySku.has(l.sku) && l.qty > 0 && Number.isFinite(l.qty))
+    .map((l) => {
+      const unitPriceCents = l.unitPriceCents !== null && l.unitPriceCents > 0 ? Math.round(l.unitPriceCents) : undefined;
+      return {
+        sku: l.sku,
+        description: l.description,
+        qty: l.qty,
+        unit: normalizeUnit(l.unit),
+        unitPriceCents,
+        lineTotalCents: unitPriceCents !== undefined ? Math.round(l.qty * unitPriceCents) : undefined,
+        confidence: Math.min(1, Math.max(0, l.confidence)),
+        evidenceStartMs: l.evidenceStartMs ?? undefined,
+        evidenceRole: l.evidenceRole ?? undefined,
+      };
+    });
 
-    // Guard against invented numbers: every quantity and price must have been spoken on the call.
-    if (!(l.qty > 0) || !Number.isFinite(l.qty)) failures.push(`Quantity for ${label} is missing or invalid.`);
-    else if (!quantityStated(numbers, l.qty)) failures.push(`Quantity ${l.qty} for ${label} does not appear in the transcript.`);
-    if (l.unitPriceCents !== null && !priceStated(numbers, l.unitPriceCents)) {
-      failures.push(`Price ${usd(l.unitPriceCents)} for ${label} does not appear in the transcript.`);
-    }
-
-    const unitPriceCents = l.unitPriceCents !== null && l.unitPriceCents > 0 ? Math.round(l.unitPriceCents) : undefined;
-    const qty = l.qty;
-    return {
-      sku: product ? product.sku : "UNKNOWN",
-      description: l.description,
-      qty,
-      unit,
-      unitPriceCents,
-      lineTotalCents: unitPriceCents !== undefined && qty > 0 ? Math.round(qty * unitPriceCents) : undefined,
-      confidence,
-      evidenceStartMs: l.evidenceStartMs ?? undefined,
-      evidenceRole: l.evidenceRole ?? undefined,
-    };
-  });
-
-  if (analysis.status === "verbal_agreement") {
-    if (lines.length === 0) failures.push("No order lines were agreed.");
-    for (const l of lines) if (l.unitPriceCents === undefined) failures.push(`No price was given for ${l.description} on the call.`);
-  }
-
-  let status = analysis.status;
-  if (status === "verbal_agreement" && failures.length > 0) status = "needs_review";
-
-  const priceFlags: PriceFlag[] = [];
-  for (const l of lines) {
-    const product = bySku.get(l.sku);
-    if (!product || l.unitPriceCents === undefined) continue;
-    const perCase =
-      l.unit === "case" ? l.unitPriceCents : SINGLE_UNITS.has(l.unit) ? l.unitPriceCents * product.unitsPerCase : null;
-    if (perCase === null) continue;
-    const flag = priceFlagFor(product.sku, perCase, product.priceRetailRefCents);
-    if (flag) priceFlags.push(flag);
-  }
-
-  // Totals only for an order both sides agreed to: a needs_review line can carry a placeholder quantity.
+  const status = analysis.status;
+  // A total only makes sense for an agreed order with a price on every line.
   if (status !== "verbal_agreement") for (const l of lines) l.lineTotalCents = undefined;
   const allPriced = status === "verbal_agreement" && lines.length > 0 && lines.every((l) => l.lineTotalCents !== undefined);
+
   const events: BuiltEvent[] = analysis.events.map((e) => ({
     field: e.field,
     value: e.value,
@@ -444,9 +414,9 @@ export function buildOrder(analysis: ModelAnalysis, segments: Segment[], catalog
     lines,
     unavailable,
     events,
-    openIssues: [...new Set([...analysis.openIssues.map((s) => s.trim()).filter(Boolean), ...failures])],
-    checkFailures: failures,
-    priceFlags,
+    openIssues: [...new Set(analysis.openIssues.map((x) => x.trim()).filter(Boolean))],
+    checkFailures: [],
+    priceFlags: [],
     totalCents: allPriced ? lines.reduce((sum, l) => sum + (l.lineTotalCents ?? 0), 0) : undefined,
     deliveryDate: analysis.deliveryDate?.trim() || undefined,
     paymentTerms: analysis.paymentTerms?.trim() || undefined,
