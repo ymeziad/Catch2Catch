@@ -24,11 +24,13 @@ import type * as lib_twilio from "../lib/twilio.js";
 import type * as lib_wav from "../lib/wav.js";
 import type * as messages from "../messages.js";
 import type * as messaging from "../messaging.js";
+import type * as moderation from "../moderation.js";
 import type * as orders from "../orders.js";
 import type * as prices from "../prices.js";
 import type * as recordings from "../recordings.js";
 import type * as reminders from "../reminders.js";
 import type * as seed from "../seed.js";
+import type * as shops from "../shops.js";
 import type * as transcription from "../transcription.js";
 import type * as transcripts from "../transcripts.js";
 
@@ -55,11 +57,13 @@ declare const fullApi: ApiFromModules<{
   "lib/wav": typeof lib_wav;
   messages: typeof messages;
   messaging: typeof messaging;
+  moderation: typeof moderation;
   orders: typeof orders;
   prices: typeof prices;
   recordings: typeof recordings;
   reminders: typeof reminders;
   seed: typeof seed;
+  shops: typeof shops;
   transcription: typeof transcription;
   transcripts: typeof transcripts;
 }>;
